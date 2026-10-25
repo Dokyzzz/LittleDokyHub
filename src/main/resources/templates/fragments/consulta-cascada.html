@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+    <section th:fragment="consultaCascada(categorias, admin)" class="container my-4 p-4 bg-white rounded-4 shadow-sm"
+        data-cascade th:with="ruta=${admin ? '/administracion/consultas' : '/api/catalogo'}"
+        th:attr="data-base=@{${ruta}},data-admin=${admin},data-personalizar-base=@{/personalizar/}"
+        aria-labelledby="consultaTitulo">
+        <h2 id="consultaTitulo" class="h4 fw-bold" th:text="${admin ? 'Consultar personalizaciones' : 'Encuentra tu producto'}"></h2>
+        <p class="text-secondary">Elige una categoría para consultar sus productos y las opciones de cada uno.</p>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label" for="consultaCategoria">Categoría</label>
+                <select id="consultaCategoria" class="form-select" data-categoria>
+                    <option value="">Selecciona una categoría</option>
+                    <option th:each="c : ${categorias}" th:value="${c.id}" th:text="${c.nombre}"></option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="consultaProducto">Producto</label>
+                <select id="consultaProducto" class="form-select" data-producto disabled>
+                    <option value="">Primero selecciona una categoría</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="consultaOpcion">Opción</label>
+                <select id="consultaOpcion" class="form-select" data-opcion disabled>
+                    <option value="">Primero selecciona un producto</option>
+                </select>
+            </div>
+        </div>
+        <p class="small text-secondary mt-3 mb-2" data-estado role="status" aria-live="polite">Selecciona una categoría para comenzar.</p>
+        <p data-detalle class="mb-3"></p>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-reintentar hidden>Reintentar consulta</button>
+        <a th:unless="${admin}" data-personalizar class="btn btn-main" hidden>Personalizar producto</a>
+        <button th:if="${admin}" data-editar class="btn btn-main" type="button" data-bs-toggle="modal" hidden>Editar opción seleccionada</button>
+        <noscript><p class="text-secondary mt-3">Activa JavaScript para usar estos filtros dependientes.</p></noscript>
+    </section>
+</body>
+</html>

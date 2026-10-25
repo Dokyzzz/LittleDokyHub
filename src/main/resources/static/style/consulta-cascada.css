@@ -1,0 +1,5 @@
+[data-cascade] [hidden],
+[data-option-row][hidden],
+#sinOpcionesConsulta[hidden] {
+    display: none !important;
+}

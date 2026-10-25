@@ -70,14 +70,14 @@ que el informe use de forma consistente este alcance y sus entidades reales.
 | Relaciones entre entidades | `ManyToOne`, `OneToOne`, `MapsId`, claves foráneas en SQL. |
 | Validación y mensajes en formularios | Validaciones de producto, categoría, registro y checkout; errores visibles. Administración muestra un resumen por redirección; conviene conservar los valores y asociar cada mensaje a su campo. |
 | Consultas entre tablas con DTO | `OpcionListado`: JPQL producto/opción. `CompraService.Linea`: datos calculados del carrito. Si se espera más de un reporte DTO con joins, agregar ventas por fecha/categoría o pedidos por cliente. |
-| Consultas en cascada con desplegables, mínimo 2 páginas | **Pendiente.** Elegir un producto en un combo o mostrar radios no demuestra una cascada. Implementar categoría → producto → opciones en la página de catálogo y en gestión; consultar los hijos según el padre elegido y limpiar las selecciones anteriores. |
+| Consultas en cascada con desplegables, mínimo 2 páginas | **Implementado.** Categoría → producto → opción en `/categorias` y `/administracion/gestion`, mediante consultas JPA/DTO al servidor. Limpieza de hijos, carga, estados vacíos, reintento y protección contra respuestas tardías. |
 | Menús y páginas organizados | Navegación y plantillas Bootstrap existentes; renderizado verificado. Falta revisión visual manual en móvil y escritorio. |
 | Modelo entidad-relación en el informe | El modelo puede derivarse de la tabla anterior; no se encontró un diagrama entregable en esta rama. |
 | Informe y capturas de CRUD | No se verificó su contenido: el README enlaza documentos externos. Prepararlos con evidencia real de ejecución. |
 
 ## Comprobaciones
 
-Resultado: **19 pruebas, 0 fallos, 0 errores, 0 omitidas** mediante `./mvnw test`.
+Resultado actualizado: **24 pruebas de servidor** mediante `./mvnw test` y **7 pruebas de interacción** mediante `npm run test:ui`, sin fallos ni errores.
 
 - Pruebas existentes de codificación de contraseñas, migración BCrypt y carga de imágenes.
 - Inicio del contexto Spring Boot con esquema JPA aislado.
@@ -97,7 +97,7 @@ entregar, probar importación, login demo, CRUD y pedido completo sobre MySQL 8.
 
 ## Recomendaciones priorizadas
 
-1. Completar las dos páginas con desplegables en cascada: es el faltante funcional más claro de la rúbrica.
+1. Mostrar las dos consultas en cascada en la exposición y añadir capturas: categoría → producto → opción en catálogo y gestión, incluida una categoría vacía y el cambio de selección.
 2. Probar la instalación desde cero sobre MySQL 8 y crear capturas reales de registrar/listar/editar/retirar producto y registrar/listar/editar/eliminar categoría.
 3. Añadir el diagrama ER y actualizar el informe con las 12 tablas, relaciones, baja lógica, DTO y validaciones realmente implementadas.
 4. Si se exige persistencia exclusivamente JPA, llevar compras y edición de opciones a repositorios/servicios JPA, manteniendo transacciones y bloqueos del stock.
@@ -107,4 +107,29 @@ entregar, probar importación, login demo, CRUD y pedido completo sobre MySQL 8.
 8. Gestionar migraciones versionadas (por ejemplo Flyway), retirar archivos huérfanos de imágenes con una política definida y no ejecutar una migración masiva de contraseñas en cada arranque de producción.
 
 Estas recomendaciones no significan que todos esos módulos sean obligatorios
-para la entrega 3; el punto 1 sí está expresamente en la rúbrica compartida.
+para la entrega 3. Las dos páginas con consultas en cascada ya están implementadas;
+falta incorporar su evidencia al informe y comprobarlas con MySQL real.
+
+
+## Actualización: cascadas en catálogo y administración
+
+Los endpoints públicos `/api/catalogo/categorias/{id}/productos` y
+`/api/catalogo/categorias/{id}/productos/{productoId}/opciones` muestran únicamente
+productos con stock y opciones activas. Las rutas equivalentes bajo
+`/administracion/consultas` incluyen agotados e inactivas y requieren rol ADMIN.
+El cliente no puede activar ese acceso enviando parámetros adicionales.
+
+La relación categoría/producto se comprueba en el servidor y los joins filtran
+los hijos por sus padres. Referencias inexistentes o combinaciones manipuladas
+responden 404. Los resultados son DTO, sin exponer entidades de usuario.
+
+En gestión, las selecciones filtran la tabla existente y el botón de edición
+apunta al modal de la opción seleccionada. En catálogo, el enlace abre la
+personalización del producto; la consulta de una opción no agrega automáticamente
+esa configuración al carrito ni sustituye las validaciones de compra.
+
+Las cinco nuevas pruebas de servidor comprueban filtros, estados, permisos,
+referencias inválidas y renderizado de ambas páginas. Las siete pruebas de jsdom
+comprueban limpieza de hijos, respuestas fuera de orden, listas vacías, errores,
+reintento, filtrado/edición y representación segura de nombres. No equivalen a
+una revisión visual en navegador. No se requieren cambios de SQL para las cascadas.

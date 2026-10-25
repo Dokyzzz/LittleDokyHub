@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Dependencias opcionales de pruebas JavaScript
+node_modules/

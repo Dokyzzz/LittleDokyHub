@@ -63,11 +63,44 @@ antes de usar datos reales. No se incluyen credenciales de tu servidor MySQL.
 No hay pasarela de pago. La recuperación por correo aún no está implementada;
 la interfaz informa esa limitación sin simular un cambio de contraseña.
 
+## Consultas en cascada (dos páginas)
+
+En `/categorias`, el panel **Encuentra tu producto** permite seleccionar categoría,
+producto y opción. Los productos se consultan al elegir categoría; sus opciones
+se consultan al elegir producto. Solo muestra productos con stock y opciones
+activas. Presenta precio base, stock y adicional de la opción, y permite continuar
+a la personalización completa.
+
+En `/administracion/gestion`, **Consultar personalizaciones** ofrece la misma
+secuencia, incluyendo agotados e inactivas. Filtra la tabla de opciones por la
+categoría, producto y opción seleccionados. El botón de edición abre el modal de
+esa opción. Estos datos administrativos requieren sesión con rol ADMIN.
+
+Al cambiar un padre se limpian y deshabilitan los desplegables dependientes hasta
+recibir los nuevos datos. Se muestran estados de carga, listas vacías y errores
+con reintento. Se ignoran respuestas anteriores que llegan fuera de orden.
+Las consultas usan Spring Data JPA y DTO; no dependen de listas fijas en JavaScript.
+No se necesita modificar el esquema SQL para esta funcionalidad.
+
 ## Pruebas
 
 ```bash
 ./mvnw test
 ```
+
+Pruebas opcionales de interacción de los desplegables (Node.js 18+):
+
+```bash
+npm ci
+npm run test:ui
+```
+
+Node.js solo es necesario para estas pruebas de interfaz; la aplicación sigue
+arrancando con Java/Maven y no necesita un proceso de compilación de frontend.
+Las pruebas de JavaScript usan jsdom y respuestas simuladas para comprobar
+selecciones, limpieza, consultas tardías, permisos de edición en la interfaz,
+listas vacías, errores y reintento. Las pruebas de servidor comprueban por separado
+los permisos reales y las consultas contra la base de datos.
 
 Las pruebas usan H2 en modo MySQL, aislada de la base local; incluyen renderizado
 Thymeleaf con MockMvc, reglas de carrito, confirmación, permisos y CRUD. H2 no

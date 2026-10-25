@@ -191,4 +191,73 @@ class CommerceIntegrationTests {
             .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("error"));
     }
 
+    @Test
+    void cascadasPublicasFiltranPorCategoriaProductoYEstado() throws Exception {
+        db.update("INSERT INTO categorias(id,codigo,nombre) VALUES(3,'vacia','Sin productos')");
+        db.update("INSERT INTO productos(id,nombre,precio,stock,categoria_id) VALUES(3,'Pizza agotada',20,0,1)");
+        db.update("INSERT INTO opciones(id,producto_id,grupo,nombre,precio,activo) VALUES(6,2,'EXTRA','Salsa',1,true)");
+        mvc.perform(get("/api/catalogo/categorias/1/productos").with(anonymous()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].id").value(1)).andExpect(jsonPath("$[0].nombre").value("Pizza Test"))
+            .andExpect(jsonPath("$[0].precio").value(32.0)).andExpect(jsonPath("$[0].password").doesNotExist());
+        mvc.perform(get("/api/catalogo/categorias/2/productos").with(anonymous()))
+            .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].id").value(2));
+        mvc.perform(get("/api/catalogo/categorias/3/productos").with(anonymous()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/catalogo/categorias/1/productos/1/opciones").with(anonymous()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(4))
+            .andExpect(jsonPath("$[*].activo").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(true))))
+            .andExpect(jsonPath("$[*].productoId").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(1))));
+        mvc.perform(get("/api/catalogo/categorias/2/productos/2/opciones").with(anonymous()))
+            .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].nombre").value("Salsa"));
+    }
+
+    @Test
+    void cascadasRechazanPadresInexistentesYCombinacionesManipuladas() throws Exception {
+        mvc.perform(get("/api/catalogo/categorias/999/productos")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/catalogo/categorias/2/productos/1/opciones")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/catalogo/categorias/1/productos/999/opciones")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/catalogo/categorias/no-numerico/productos")).andExpect(status().isBadRequest());
+        db.update("UPDATE productos SET stock=0 WHERE id=1");
+        mvc.perform(get("/api/catalogo/categorias/1/productos/1/opciones")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "cliente@test.pe", roles = "ADMIN")
+    void cascadaAdministrativaIncluyeAgotadosYOpcionesInactivas() throws Exception {
+        db.update("UPDATE productos SET stock=0 WHERE id=1");
+        mvc.perform(get("/administracion/consultas/categorias/1/productos"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].stock").value(0));
+        mvc.perform(get("/administracion/consultas/categorias/1/productos/1/opciones"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(5))
+            .andExpect(jsonPath("$[?(@.activo == false)].nombre").value(org.hamcrest.Matchers.contains("Inactiva")));
+        mvc.perform(get("/administracion/consultas/categorias/2/productos/1/opciones"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void soloAdministradorPuedeConsultarOpcionesInactivas() throws Exception {
+        for (String path : List.of("/administracion/consultas/categorias/1/productos", "/administracion/consultas/categorias/1/productos/1/opciones")) {
+            mvc.perform(get(path)).andExpect(status().isForbidden());
+            mvc.perform(get(path).with(anonymous())).andExpect(status().is3xxRedirection());
+        }
+        mvc.perform(get("/api/catalogo/categorias/1/productos/1/opciones").param("incluirInactivas", "true"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(4));
+    }
+
+    @Test
+    void paginasIncluyenDesplegablesDependientes() throws Exception {
+        mvc.perform(get("/categorias")).andExpect(status().isOk())
+            .andExpect(content().string(containsString("id=\"consultaCategoria\"")))
+            .andExpect(content().string(containsString("id=\"consultaProducto\"")))
+            .andExpect(content().string(containsString("id=\"consultaOpcion\"")))
+            .andExpect(content().string(containsString("data-base=\"/api/catalogo\"")))
+            .andExpect(content().string(containsString("/js/consulta-cascada.js")));
+        mvc.perform(get("/administracion/gestion").with(user("cliente@test.pe").roles("ADMIN")))
+            .andExpect(status().isOk()).andExpect(content().string(containsString("data-base=\"/administracion/consultas\"")))
+            .andExpect(content().string(containsString("data-option-row")))
+            .andExpect(content().string(containsString("data-editar")));
+    }
+
 }
