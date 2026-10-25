@@ -152,7 +152,7 @@
                         </thead>
                         <tbody>
                             <tr th:each="o : ${opciones}">
-                                <td th:text="${'Producto #' + o.producto_id}"></td>
+                                <td th:text="${o.productoNombre}"></td>
                                 <td><span class="badge text-bg-light" th:text="${o.grupo}"></span></td>
                                 <td class="fw-semibold" th:text="${o.nombre}"></td>
                                 <td class="text-nowrap" th:text="|S/ ${#numbers.formatDecimal(o.precio, 1, 'POINT', 2, 'POINT')}|"></td>
@@ -223,9 +223,9 @@
                             <form th:action="@{/administracion/gestion/opcion}" method="post">
                                 <div class="modal-body">
                                     <input type="hidden" name="id" th:value="${o.id}">
-                                    <input type="hidden" name="productoId" th:value="${o.producto_id}">
+                                    <input type="hidden" name="productoId" th:value="${o.productoId}">
                                     <input type="hidden" name="grupo" th:value="${o.grupo}">
-                                    <p class="small text-secondary" th:text="${'Producto #' + o.producto_id + ' · ' + o.grupo}"></p>
+                                    <p class="small text-secondary" th:text="${'Producto #' + o.productoId + ' · ' + o.grupo}"></p>
                                     <label class="form-label" th:for="|opcionNombre-${o.id}|">Nombre</label>
                                     <input class="form-control form-control-custom" name="nombre"
                                         th:id="|opcionNombre-${o.id}|" th:value="${o.nombre}" required maxlength="100">

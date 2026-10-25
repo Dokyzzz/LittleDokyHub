@@ -20,6 +20,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class PageController {
 
     @Autowired
+    private com.littledokyhub.service.CompraService compraService;
+
+    @Autowired
     private ProductoService productoService;
 
     @Autowired
@@ -40,6 +43,7 @@ public class PageController {
     @GetMapping("/categorias")
     public String categorias(Model model) {
         model.addAttribute("categorias", categoriaService.listar());
+        model.addAttribute("productos", productoService.listar());
         model.addAttribute("clasicas", productoService.obtenerClasicas());
         model.addAttribute("especiales", productoService.obtenerEspeciales());
         model.addAttribute("bebidas", productoService.obtenerBebidas());
@@ -60,17 +64,8 @@ public class PageController {
             return "redirect:/categorias";
         }
         model.addAttribute("producto", producto.get());
+        model.addAttribute("opciones", compraService.opciones(id));
         return "shop/personalizar";
-    }
-
-    @GetMapping("/pedido/resumen")
-    public String resumenPedido() {
-        return "shop/resumen-pedido";
-    }
-
-    @GetMapping("/pedido/entrega")
-    public String entregaPedido() {
-        return "shop/entrega-pedido";
     }
 
     @GetMapping("/contacto")
@@ -118,7 +113,13 @@ public class PageController {
         }
         nuevo.setRol(rolCliente);
 
-        boolean guardado = usuarioService.guardar(nuevo);
+        boolean guardado;
+        try {
+            guardado = usuarioService.guardar(nuevo);
+        } catch (org.springframework.dao.DataIntegrityViolationException exception) {
+            errors.rejectValue("email", "duplicate", "El correo electrónico ya se encuentra registrado.");
+            return "account/create";
+        }
 
         if (!guardado) {
             errors.rejectValue("email", "duplicate", "El correo electrónico ya se encuentra registrado.");
@@ -131,17 +132,17 @@ public class PageController {
 
     @GetMapping("/forgotpassword")
     public String forgotPassword() {
-        return "account/forgotpassword";
+        return "account/recovery-unavailable";
     }
 
     @GetMapping("/verifycode")
     public String verifyCode() {
-        return "account/verifycode";
+        return "account/recovery-unavailable";
     }
 
     @GetMapping("/resetpassword")
     public String resetPassword() {
-        return "account/resetpassword";
+        return "account/recovery-unavailable";
     }
 
     @GetMapping("/administracion")

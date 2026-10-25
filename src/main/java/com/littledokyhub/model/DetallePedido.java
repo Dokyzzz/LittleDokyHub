@@ -1,6 +1,7 @@
 package com.littledokyhub.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -20,13 +21,13 @@ public class DetallePedido {
 
     @NotNull(message = "El precio unitario es obligatorio")
     @DecimalMin(value = "0.01", message = "El precio debe ser mayor a 0")
-    @Column(name = "precio_unitario", nullable = false)
-    private Double precioUnitario;
+    @Column(name = "precio_unitario", nullable = false, precision = 10, scale = 2)
+    private BigDecimal precioUnitario;
 
     @NotNull(message = "El subtotal es obligatorio")
     @DecimalMin(value = "0.01", message = "El subtotal debe ser mayor a 0")
-    @Column(nullable = false)
-    private Double subtotal;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal subtotal;
 
     // Relación hacia la cabecera del Pedido
     @NotNull(message = "Debe pertenecer a un pedido")
@@ -44,16 +45,16 @@ public class DetallePedido {
     @PreUpdate
     public void calcularSubtotal() {
         if (this.precioUnitario != null && this.cantidad != null) {
-            this.subtotal = this.precioUnitario * this.cantidad;
+            this.subtotal = this.precioUnitario.multiply(BigDecimal.valueOf(this.cantidad));
         }
     }
 
     public DetallePedido() {}
 
-    public DetallePedido(Integer cantidad, Double precioUnitario, Pedido pedido, Producto producto) {
+    public DetallePedido(Integer cantidad, BigDecimal precioUnitario, Pedido pedido, Producto producto) {
         this.cantidad = cantidad;
         this.precioUnitario = precioUnitario;
-        this.subtotal = precioUnitario * cantidad;
+        this.subtotal = precioUnitario.multiply(BigDecimal.valueOf(cantidad));
         this.pedido = pedido;
         this.producto = producto;
     }
@@ -65,11 +66,11 @@ public class DetallePedido {
     public Integer getCantidad() { return cantidad; }
     public void setCantidad(Integer cantidad) { this.cantidad = cantidad; }
 
-    public Double getPrecioUnitario() { return precioUnitario; }
-    public void setPrecioUnitario(Double precioUnitario) { this.precioUnitario = precioUnitario; }
+    public BigDecimal getPrecioUnitario() { return precioUnitario; }
+    public void setPrecioUnitario(BigDecimal precioUnitario) { this.precioUnitario = precioUnitario; }
 
-    public Double getSubtotal() { return subtotal; }
-    public void setSubtotal(Double subtotal) { this.subtotal = subtotal; }
+    public BigDecimal getSubtotal() { return subtotal; }
+    public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
 
     public Pedido getPedido() { return pedido; }
     public void setPedido(Pedido pedido) { this.pedido = pedido; }

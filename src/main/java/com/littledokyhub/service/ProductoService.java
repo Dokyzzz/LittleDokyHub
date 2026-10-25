@@ -52,7 +52,9 @@ public class ProductoService {
 
     public boolean eliminar(Integer id) {
         if (productoRepository.existsById(id)) {
-            productoRepository.deleteById(id);
+            Producto producto = productoRepository.findById(id).orElseThrow();
+            producto.setStock(0);
+            productoRepository.saveAndFlush(producto);
             return true;
         }
         return false;
@@ -60,10 +62,7 @@ public class ProductoService {
 
     @Transactional(readOnly = true)
     public List<Producto> porCategoria(String codigoCategoria) {
-        return productoRepository.findAll().stream()
-                .filter(p -> p.getCategoria() != null
-                        && codigoCategoria.equalsIgnoreCase(p.getCategoria().getCodigo()))
-                .toList();
+        return productoRepository.findByCategoriaCodigoIgnoreCase(codigoCategoria);
     }
 
     @Transactional(readOnly = true)

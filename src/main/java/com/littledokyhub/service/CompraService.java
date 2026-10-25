@@ -5,14 +5,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.math.BigDecimal;
+import com.littledokyhub.form.CheckoutForm;
+import jakarta.validation.Validator;
 
 @Service
 @Transactional
 public class CompraService {
     private final JdbcTemplate db;
+    private final Validator validator;
 
-    public CompraService(JdbcTemplate db) {
+    public CompraService(JdbcTemplate db, Validator validator) {
         this.db = db;
+        this.validator = validator;
     }
 
     public List<Map<String, Object>> query(String sql, Object... args) {
@@ -145,27 +149,39 @@ public class CompraService {
             throw new IllegalArgumentException("Cantidad inválida");
         if (qty == 0)
             db.update("DELETE FROM carrito_items WHERE id=? AND carrito_id=?", id, cart);
-        else
+        else {
+            var item = query("SELECT producto_id,configuracion FROM carrito_items WHERE id=? AND carrito_id=?", id, cart);
+            if (item.isEmpty())
+                throw new IllegalArgumentException("El producto no pertenece a tu carrito");
+            var product = producto(((Number) item.get(0).get("producto_id")).intValue());
+            if (((Number) product.get("stock")).intValue() < qty)
+                throw new IllegalArgumentException("Cantidad superior al stock disponible");
             db.update("UPDATE carrito_items SET cantidad=? WHERE id=? AND carrito_id=?", qty, id, cart);
+        }
     }
 
     public BigDecimal total(List<Linea> lines) {
         return lines.stream().map(Linea::subtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public int confirmar(String cart, String email) {
-        db.queryForList("SELECT id FROM carritos WHERE id=? FOR UPDATE", cart);
+    public int confirmar(String cart, String email, CheckoutForm checkout) {
+        var violations = validator.validate(checkout);
+        if (!violations.isEmpty())
+            throw new IllegalArgumentException(violations.iterator().next().getMessage());
+        int uid = db.queryForObject("SELECT id FROM usuarios WHERE email=?", Integer.class, email);
+        if (query("SELECT id FROM carritos WHERE id=? AND usuario_id=? FOR UPDATE", cart, uid).isEmpty())
+            throw new IllegalArgumentException("El carrito no pertenece al usuario");
         var items = query("SELECT producto_id FROM carrito_items WHERE carrito_id=? ORDER BY producto_id", cart);
         for (var item : items)
             db.queryForList("SELECT id FROM productos WHERE id=? FOR UPDATE", item.get("producto_id"));
         var lines = lineas(cart);
         if (lines.isEmpty() || lines.stream().anyMatch(l -> !l.disponible()))
             throw new IllegalArgumentException("Revisa el carrito y la disponibilidad antes de continuar");
-        int uid = db.queryForObject("SELECT id FROM usuarios WHERE email=?", Integer.class, email);
-        db.update("INSERT INTO pedidos(fecha,total,estado,usuario_id) VALUES(NOW(),?,'PENDIENTE_PAGO',?)", total(lines),
+        db.update("INSERT INTO pedidos(fecha,total,estado,usuario_id) VALUES(NOW(),?,'PENDIENTE_PAGO',?)", total(lines).add(checkout.costoEnvio()),
                 uid);
         int order = db.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
-        db.update("INSERT INTO compra_snapshot VALUES(?,'RECOJO','Recojo en tienda','EFECTIVO_EN_TIENDA')", order);
+        db.update("INSERT INTO compra_snapshot(pedido_id,entrega,direccion,pago) VALUES(?,?,?,?)", order,
+                checkout.getEntrega(), "RECOJO".equals(checkout.getEntrega()) ? "Recojo en tienda" : checkout.getDireccion().trim(), checkout.getPago());
         for (var l : lines) {
             if (db.update("UPDATE productos SET stock=stock-? WHERE id=? AND stock>=?", l.cantidad(), l.productoId(),
                     l.cantidad()) != 1)
@@ -174,7 +190,7 @@ public class CompraService {
                     "INSERT INTO detalles_pedido(cantidad,precio_unitario,subtotal,pedido_id,producto_id) VALUES(?,?,?,?,?)",
                     l.cantidad(), l.precio(), l.subtotal(), order, l.productoId());
             int detail = db.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
-            db.update("INSERT INTO detalle_snapshot VALUES(?,?,?)", detail, l.nombre(), l.configuracion());
+            db.update("INSERT INTO detalle_snapshot(detalle_id,nombre,personalizacion) VALUES(?,?,?)", detail, l.nombre(), l.configuracion());
         }
         db.update("DELETE FROM carrito_items WHERE carrito_id=?", cart);
         return order;

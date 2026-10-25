@@ -10,24 +10,34 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.math.BigDecimal;
+import com.littledokyhub.repository.OpcionRepository;
+import com.littledokyhub.repository.MensajeRepository;
+import com.littledokyhub.service.CategoriaService;
 
 @Controller
 @RequestMapping("/administracion/gestion")
 public class GestionController {
     private final CategoriaRepository categorias;
     private final JdbcTemplate db;
+    private final OpcionRepository opciones;
+    private final MensajeRepository mensajes;
+    private final CategoriaService categoriaService;
 
-    public GestionController(CategoriaRepository categorias, JdbcTemplate db) {
+    public GestionController(CategoriaRepository categorias, JdbcTemplate db, OpcionRepository opciones,
+            MensajeRepository mensajes, CategoriaService categoriaService) {
         this.categorias = categorias;
         this.db = db;
+        this.opciones = opciones;
+        this.mensajes = mensajes;
+        this.categoriaService = categoriaService;
     }
 
     @GetMapping
     String page(Model m) {
-        m.addAttribute("mensajes", db.queryForList("SELECT * FROM mensajes ORDER BY fecha DESC"));
+        m.addAttribute("mensajes", mensajes.findAllByOrderByFechaDesc());
         m.addAttribute("categorias", categorias.findAll());
         m.addAttribute("productos", db.queryForList("SELECT id,nombre FROM productos"));
-        m.addAttribute("opciones", db.queryForList("SELECT * FROM opciones ORDER BY producto_id,id"));
+        m.addAttribute("opciones", opciones.listarConProducto());
         return "admin/gestion";
     }
 
@@ -37,7 +47,7 @@ public class GestionController {
             throw new IllegalArgumentException(errors.getAllErrors().get(0).getDefaultMessage());
         if (c.getId() != null && !categorias.existsById(c.getId()))
             throw new IllegalArgumentException("Categoría inexistente");
-        categorias.save(c);
+        categoriaService.guardar(c);
         f.addFlashAttribute("exito", "Categoría guardada");
         return "redirect:/administracion/gestion";
     }
@@ -60,9 +70,9 @@ public class GestionController {
         if (id == null)
             db.update("INSERT INTO opciones(producto_id,grupo,nombre,precio,activo) VALUES(?,?,?,?,?)", productoId,
                     grupo, nombre, precio, activo);
-        else
-            db.update("UPDATE opciones SET producto_id=?,grupo=?,nombre=?,precio=?,activo=? WHERE id=?", productoId,
-                    grupo, nombre, precio, activo, id);
+        else if (db.update("UPDATE opciones SET producto_id=?,grupo=?,nombre=?,precio=?,activo=? WHERE id=?", productoId,
+                    grupo, nombre, precio, activo, id) != 1)
+            throw new IllegalArgumentException("La opción que intentas editar no existe");
         return "redirect:/administracion/gestion";
     }
 

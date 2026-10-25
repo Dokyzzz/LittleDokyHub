@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.security.Principal;
 import java.util.*;
+import com.littledokyhub.form.CheckoutForm;
+import jakarta.validation.Valid;
+import org.springframework.validation.BindingResult;
 
 @Controller
 public class CompraController {
@@ -35,10 +38,8 @@ public class CompraController {
     }
 
     @GetMapping("/producto/{id}")
-    String producto(@PathVariable int id, Model model) {
-        model.addAttribute("producto", service.producto(id));
-        model.addAttribute("opciones", service.opciones(id));
-        return "shop/producto";
+    String producto(@PathVariable int id) {
+        return "redirect:/personalizar/" + id;
     }
 
     @PostMapping("/carrito/agregar")
@@ -60,6 +61,33 @@ public class CompraController {
         return "redirect:/pedido/resumen";
     }
 
+    @GetMapping("/pedido/resumen")
+    String resumen(HttpServletRequest req, HttpServletResponse res, Principal user, Model model) {
+        cargarCarrito(req, res, user, model);
+        return "shop/resumen-pedido";
+    }
+
+    private void cargarCarrito(HttpServletRequest req, HttpServletResponse res, Principal user, Model model) {
+        var lineas = service.lineas(cart(req, res, user));
+        model.addAttribute("lineas", lineas);
+        model.addAttribute("subtotal", service.total(lineas));
+        model.addAttribute("puedeConfirmar", !lineas.isEmpty() && lineas.stream().allMatch(CompraService.Linea::disponible));
+    }
+
+    @GetMapping("/carrito/datos")
+    @ResponseBody
+    Map<String, Object> datos(HttpServletRequest req, HttpServletResponse res, Principal user) {
+        var lineas = service.lineas(cart(req, res, user));
+        return Map.of("lineas", lineas, "total", service.total(lineas));
+    }
+
+    @GetMapping("/pedido/entrega")
+    String entrega(HttpServletRequest req, HttpServletResponse res, Principal user, Model model) {
+        model.addAttribute("checkout", new CheckoutForm());
+        cargarCarrito(req, res, user, model);
+        return "shop/entrega-pedido";
+    }
+
     @GetMapping("/checkout")
     String checkout() {
         return "redirect:/pedido/entrega";
@@ -72,9 +100,20 @@ public class CompraController {
         return "redirect:/carrito";
     }
 
+    @PostMapping("/carrito/eliminar")
+    String remove(@RequestParam long id, HttpServletRequest req, HttpServletResponse res, Principal user) {
+        service.cantidad(cart(req, res, user), id, 0);
+        return "redirect:/carrito";
+    }
+
     @PostMapping("/checkout/confirmar")
-    String confirm(HttpServletRequest req, HttpServletResponse res, Principal user) {
-        return "redirect:/pedidos/" + service.confirmar(cart(req, res, user), user.getName());
+    String confirm(@Valid @ModelAttribute("checkout") CheckoutForm checkout, BindingResult errors,
+            HttpServletRequest req, HttpServletResponse res, Principal user, Model model) {
+        if (errors.hasErrors()) {
+            cargarCarrito(req, res, user, model);
+            return "shop/entrega-pedido";
+        }
+        return "redirect:/pedidos/" + service.confirmar(cart(req, res, user), user.getName(), checkout);
     }
 
     @GetMapping("/pedidos/{id}")
@@ -89,6 +128,7 @@ public class CompraController {
         model.addAttribute("detalles", service.query(
                 "SELECT d.*,s.nombre,s.personalizacion FROM detalles_pedido d JOIN detalle_snapshot s ON s.detalle_id=d.id WHERE d.pedido_id=?",
                 id));
+        model.addAttribute("entrega", service.query("SELECT entrega,direccion,pago FROM compra_snapshot WHERE pedido_id=?", id));
         return "shop/pedido";
     }
 

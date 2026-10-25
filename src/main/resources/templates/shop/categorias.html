@@ -28,29 +28,11 @@
             </div>
         </section>
 
-        <section class="container my-5" id="clasicas">
-            <h2 class="text-center fw-bold mb-4">Pizzas Clásicas</h2>
+        <section class="container my-5" th:each="categoria : ${categorias}" th:id="${categoria.codigo}">
+            <h2 class="text-center fw-bold mb-4" th:text="${categoria.nombre}"></h2>
             <div class="row g-4">
-                <th:block th:each="pizza : ${clasicas}">
-                    <div th:replace="~{fragments/cards :: tarjetaProducto(${pizza})}"></div>
-                </th:block>
-            </div>
-        </section>
-
-        <section class="container my-5" id="especiales">
-            <h2 class="text-center fw-bold mb-4">Pizzas Especiales &amp; Fusión</h2>
-            <div class="row g-4">
-                <th:block th:each="pizza : ${especiales}">
-                    <div th:replace="~{fragments/cards :: tarjetaProducto(${pizza})}"></div>
-                </th:block>
-            </div>
-        </section>
-
-        <section class="container my-5" id="bebidas">
-            <h2 class="text-center fw-bold mb-4">Bebidas</h2>
-            <div class="row g-4">
-                <th:block th:each="bebida : ${bebidas}">
-                    <div th:replace="~{fragments/cards :: tarjetaProducto(${bebida})}"></div>
+                <th:block th:each="producto : ${productos}" th:if="${producto.categoria.id == categoria.id}">
+                    <div th:replace="~{fragments/cards :: tarjetaProducto(${producto})}"></div>
                 </th:block>
             </div>
         </section>

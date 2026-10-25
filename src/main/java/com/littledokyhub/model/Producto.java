@@ -1,6 +1,7 @@
 package com.littledokyhub.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import jakarta.validation.constraints.*;
 
 @Entity
@@ -21,8 +22,9 @@ public class Producto {
 
     @NotNull(message = "El precio es obligatorio")
     @DecimalMin(value = "0.01", message = "El precio debe ser mayor a 0")
-    @Column(nullable = false)
-    private Double precio;
+    @Digits(integer = 8, fraction = 2, message = "El precio admite hasta 8 enteros y 2 decimales")
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal precio;
 
     @NotNull(message = "El stock es obligatorio")
     @Min(value = 0, message = "El stock no puede ser negativo")
@@ -39,7 +41,7 @@ public class Producto {
 
     public Producto() {}
 
-    public Producto(Integer id, String nombre, String descripcion, Double precio, Integer stock, String imagenUrl, Categoria categoria) {
+    public Producto(Integer id, String nombre, String descripcion, BigDecimal precio, Integer stock, String imagenUrl, Categoria categoria) {
         this.id = id;
         this.nombre = nombre;
         this.descripcion = descripcion;
@@ -58,8 +60,8 @@ public class Producto {
     public String getDescripcion() { return descripcion; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
 
-    public Double getPrecio() { return precio; }
-    public void setPrecio(Double precio) { this.precio = precio; }
+    public BigDecimal getPrecio() { return precio; }
+    public void setPrecio(BigDecimal precio) { this.precio = precio; }
 
     public Integer getStock() { return stock; }
     public void setStock(Integer stock) { this.stock = stock; }

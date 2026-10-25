@@ -77,8 +77,6 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public long contarClientes() {
-        return usuarioRepository.findAll().stream()
-                .filter(u -> u.getRol() != null && "CLIENTE".equalsIgnoreCase(u.getRol().getNombre()))
-                .count();
+        return usuarioRepository.countByRolNombreIgnoreCase("CLIENTE");
     }
 }
