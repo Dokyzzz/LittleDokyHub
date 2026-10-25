@@ -84,4 +84,9 @@ public class ProductoService {
     public List<Producto> obtenerFavoritas() {
         return obtenerClasicas().stream().limit(3).toList();
     }
+    @Transactional(readOnly = true)
+    public List<Producto> buscar(String texto) {
+        String consulta = texto == null ? "" : texto.trim();
+        return consulta.isEmpty() ? listar() : productoRepository.findByNombreContainingIgnoreCase(consulta);
+    }
 }

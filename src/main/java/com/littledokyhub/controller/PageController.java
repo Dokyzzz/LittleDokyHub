@@ -26,6 +26,9 @@ public class PageController {
     private ProductoService productoService;
 
     @Autowired
+    private com.littledokyhub.service.PersonalizacionService personalizacion;
+
+    @Autowired
     private CategoriaService categoriaService;
 
     @Autowired
@@ -41,9 +44,10 @@ public class PageController {
     }
 
     @GetMapping("/categorias")
-    public String categorias(Model model) {
+    public String categorias(@org.springframework.web.bind.annotation.RequestParam(defaultValue = "") String buscar, Model model) {
         model.addAttribute("categorias", categoriaService.listar());
-        model.addAttribute("productos", productoService.listar());
+        model.addAttribute("productos", productoService.buscar(buscar));
+        model.addAttribute("buscar", buscar);
         model.addAttribute("clasicas", productoService.obtenerClasicas());
         model.addAttribute("especiales", productoService.obtenerEspeciales());
         model.addAttribute("bebidas", productoService.obtenerBebidas());
@@ -55,7 +59,7 @@ public class PageController {
         return "shop/detalles";
     }
 
-    @GetMapping("/personalizar/{id}")
+    @GetMapping({"/personalizar/{id}", "/personalizar-bebida/{id}"})
     public String personalizar(@org.springframework.web.bind.annotation.PathVariable Integer id, Model model,
             org.springframework.web.servlet.mvc.support.RedirectAttributes flash) {
         var producto = productoService.buscarPorId(id);
@@ -64,8 +68,10 @@ public class PageController {
             return "redirect:/categorias";
         }
         model.addAttribute("producto", producto.get());
-        model.addAttribute("opciones", compraService.opciones(id));
-        return "shop/personalizar";
+        var opciones = compraService.opciones(id);
+        model.addAttribute("secciones", personalizacion.secciones(producto.get(), opciones));
+        model.addAttribute("tipoProducto", personalizacion.tipo(producto.get()));
+        return personalizacion.tipo(producto.get()).equals("bebida") ? "shop/personalizar-bebida" : "shop/personalizar";
     }
 
     @GetMapping("/contacto")

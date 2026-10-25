@@ -77,7 +77,7 @@ que el informe use de forma consistente este alcance y sus entidades reales.
 
 ## Comprobaciones
 
-Resultado actualizado: **30 pruebas de servidor** mediante `./mvnw test` y **7 pruebas de interacción** mediante `npm run test:ui`, sin fallos ni errores.
+Resultado actualizado: **35 pruebas de servidor** mediante `./mvnw test` y **9 pruebas de interacción** mediante `npm run test:ui`, sin fallos ni errores.
 
 - Pruebas existentes de codificación de contraseñas, migración BCrypt y carga de imágenes.
 - Inicio del contexto Spring Boot con esquema JPA aislado.
@@ -149,10 +149,10 @@ una base ya compatible con el esquema de esta rama. JDBC permanece como mecanism
 interno de Hibernate y como herramienta de preparación/verificación en pruebas.
 No hay consultas SQL nativas en el código de aplicación.
 
-Se incorporó el commit del grupo ac9e6f7 (plantilla de bebidas e icono), conservando
-la personalización general operativa. La plantilla nueva aún no estaba conectada
-por el aporte original y referencia un JavaScript ausente; queda documentada como
-pendiente, sin sustituir la ruta funcional de bebidas.
+Se incorporó el commit del grupo ac9e6f7 (plantilla de bebidas e icono). El aporte
+original no incluía su JavaScript ni una ruta propia. La actualización posterior
+de personalización conecta las bebidas al formulario compartido validado, como
+se describe en la última sección de esta revisión.
 
 Pruebas adicionales: fusión persistente del carrito, stock agregado entre
 configuraciones sin pedido parcial, doble confirmación e historial, y dos compras
@@ -160,3 +160,33 @@ simultáneas del último stock. Estas cuatro pruebas no usan una transacción ex
 que oculte los commits o rollback del servicio. Además se prueban contacto y
 registro/edición de opciones mediante los endpoints existentes. El motor de las
 pruebas sigue siendo H2; queda pendiente comprobar estos bloqueos con MySQL real.
+
+
+## Corrección de personalización y controles de páginas
+
+Se detectó que las bases existentes podían no tener opciones y que el SQL inicial
+solo configuraba seis pizzas. La plantilla mostraba los encabezados sin hijos.
+Ahora se completan las secciones faltantes mediante JPA al arrancar y al guardar
+productos conocidos, sin reemplazar precios ni reactivar opciones existentes.
+La operación se prueba con opciones vacías y se comprueba su idempotencia.
+
+Se recuperan tarjetas con radios/checkboxes, selección inicial, controles de
+cantidad y cálculo del total. La plantilla compartida adapta títulos y secciones
+a pizza/bebida/entrada, y omite secciones vacías. Las bebidas no ofrecen masa ni
+salsas saladas, tanto en presentación/cascadas públicas como en validación de
+compra y edición administrativa. Los errores de selección vuelven al producto.
+
+Otros controles corregidos: búsqueda del inicio (faltaba el nombre del campo),
+CTA sin acción de la promoción (ahora lleva al menú y no promete precio de combo),
+acceso a cuenta desde el nombre del usuario y entrada del menú para Entradas.
+Quitar una línea del carrito omite la validación del campo cantidad para poder
+eliminarla aunque se haya escrito una cantidad inválida.
+
+Verificación: nuevas pruebas de renderizado y selección, coherencia de bebidas,
+opciones faltantes, búsqueda, redirecciones, recursos locales y destinos de
+modales en las páginas principales. JavaScript comprueba total y límites de los
+botones de cantidad. Se levantó además la aplicación con H2 y se recorrió mediante
+HTTP real pizza + bebida + entrada → carrito → login/fusión → entrega → pedido.
+La ejecución de Chromium en este entorno falló por inicialización gráfica: no se
+presenta esta comprobación como una revisión visual completa. MySQL real sigue
+pendiente. No se borraron datos de la base del usuario ni se accedió a ella.

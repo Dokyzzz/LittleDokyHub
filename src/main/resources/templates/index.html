@@ -22,7 +22,7 @@
                 <div class="row justify-content-center mb-3">
                     <div class="col-12 col-md-6">
                         <form class="d-flex gap-2" th:action="@{/categorias}" method="get">
-                            <input type="search" class="form-control form-control-lg"
+                            <input name="buscar" maxlength="100" type="search" class="form-control form-control-lg"
                                 placeholder="¿Qué pizza te apetece hoy?">
                             <button class="btn btn-accent px-4" type="submit"><i class="bi bi-search"></i></button>
                         </form>
@@ -33,7 +33,7 @@
                     <a th:href="@{/categorias}" class="btn btn-main btn-lg px-4 me-4">Ver Menú</a>
                     <button class="btn btn-outline-light btn-lg px-4" data-bs-toggle="modal"
                         data-bs-target="#modalPromo">
-                        Promo del Día
+                        Para compartir
                     </button>
                 </div>
             </div>

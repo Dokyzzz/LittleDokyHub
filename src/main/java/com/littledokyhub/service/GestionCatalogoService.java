@@ -12,9 +12,10 @@ public class GestionCatalogoService {
     private final CategoriaRepository categorias;
     private final ProductoRepository productos;
     private final OpcionRepository opciones;
+    private final PersonalizacionService personalizacion;
 
-    public GestionCatalogoService(CategoriaRepository categorias, ProductoRepository productos, OpcionRepository opciones) {
-        this.categorias = categorias; this.productos = productos; this.opciones = opciones;
+    public GestionCatalogoService(CategoriaRepository categorias, ProductoRepository productos, OpcionRepository opciones, PersonalizacionService personalizacion) {
+        this.categorias = categorias; this.productos = productos; this.opciones = opciones; this.personalizacion = personalizacion;
     }
 
     public void eliminarCategoria(int id) {
@@ -30,6 +31,7 @@ public class GestionCatalogoService {
                 .orElseThrow(() -> new IllegalArgumentException("La opción que intentas editar no existe"));
         opcion.setProducto(producto); opcion.setGrupo(grupo); opcion.setNombre(nombre);
         opcion.setPrecio(precio); opcion.setActivo(activo);
+        if (!personalizacion.coherente(opcion)) throw new IllegalArgumentException("La opción no corresponde al tipo de producto");
         opciones.saveAndFlush(opcion);
     }
 }

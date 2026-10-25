@@ -34,6 +34,7 @@ class CommerceIntegrationTests {
     @Autowired ProductoService productos;
     @Autowired CategoriaService categorias;
     @Autowired CategoriaRepository categoriaRepository;
+    @Autowired com.littledokyhub.service.PersonalizacionService personalizacion;
 
     @BeforeEach
     void seed() {
@@ -292,6 +293,74 @@ class CommerceIntegrationTests {
         mvc.perform(post("/administracion/gestion/opcion").with(csrf()).param("productoId", "999")
             .param("grupo", "EXTRA").param("nombre", "No existe").param("precio", "1.00"))
             .andExpect(redirectedUrl("/administracion/gestion")).andExpect(flash().attributeExists("error"));
+    }
+
+    @Test
+    void opcionesFaltantesSeCompletanSinDuplicarNiCambiarPrecios() throws Exception {
+        db.update("DELETE FROM opciones");
+        personalizacion.completarFaltantes();
+        int count = db.queryForObject("SELECT COUNT(*) FROM opciones", Integer.class);
+        personalizacion.completarFaltantes();
+        assertEquals(count, db.queryForObject("SELECT COUNT(*) FROM opciones", Integer.class));
+        var html = mvc.perform(get("/personalizar/1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(html.contains("Salsa BBQ")); assertTrue(html.contains("Borde relleno de queso"));
+        assertTrue(html.contains("name=\"TAMANO\"")); assertTrue(html.contains("name=\"MASA\""));
+        assertTrue(html.contains("name=\"SALSA\"")); assertTrue(html.contains("checked"));
+        java.nio.file.Files.writeString(java.nio.file.Path.of("target/pizza-render.html"), html);
+        var secciones = personalizacion.secciones(productos.buscarPorId(1).orElseThrow(), compra.opciones(1));
+        var selected = secciones.stream().filter(g -> !g.multiple()).map(g -> String.valueOf(g.opciones().get(0).getId())).toArray(String[]::new);
+        mvc.perform(post("/carrito/agregar").with(csrf()).param("productoId", "1").param("cantidad", "1").param("opciones", selected))
+            .andExpect(redirectedUrl("/carrito"));
+        mvc.perform(get("/pedido/resumen")).andExpect(status().isOk()).andExpect(content().string(containsString("Salsa de tomate")));
+    }
+
+    @Test
+    void completarRespetaConfiguracionYDesactivacionExistentes() {
+        personalizacion.completarFaltantes();
+        assertEquals(0, new BigDecimal("12.00").compareTo(db.queryForObject("SELECT precio FROM opciones WHERE id=2", BigDecimal.class)));
+        assertFalse(db.queryForObject("SELECT activo FROM opciones WHERE id=5", Boolean.class));
+        assertEquals(2, db.queryForObject("SELECT COUNT(*) FROM opciones WHERE producto_id=1 AND grupo='TAMANO'", Integer.class));
+    }
+
+    @Test
+    void bebidaNoMuestraNiAceptaMasaOSalsaBbq() throws Exception {
+        db.update("INSERT INTO categorias(id,codigo,nombre) VALUES(3,'bebidas','Bebidas')");
+        db.update("INSERT INTO productos(id,nombre,precio,stock,categoria_id,imagen_url) VALUES(3,'Gaseosa Personal',5,10,3,'/images/logo.png')");
+        personalizacion.completarFaltantes();
+        db.update("INSERT INTO opciones(producto_id,grupo,nombre,precio,activo) VALUES(3,'MASA','Masa tradicional',0,true),(3,'EXTRA','Salsa BBQ',1,true)");
+        var response = mvc.perform(get("/personalizar/3")).andExpect(status().isOk())
+            .andExpect(content().string(containsString("Personaliza tu bebida")))
+            .andExpect(content().string(containsString("Bien fría")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Salsa BBQ"))))
+            .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Recién horneada")))).andReturn();
+        java.nio.file.Files.writeString(java.nio.file.Path.of("target/bebida-render.html"), response.getResponse().getContentAsString());
+        int bbq = db.queryForObject("SELECT id FROM opciones WHERE producto_id=3 AND nombre='Salsa BBQ'", Integer.class);
+        String cart = compra.carrito(null, "cliente@test.pe");
+        assertThrows(IllegalArgumentException.class, () -> compra.agregar(cart, 3, List.of(bbq), 1));
+        mvc.perform(get("/api/catalogo/categorias/3/productos/3/opciones"))
+            .andExpect(content().string(org.hamcrest.Matchers.not(containsString("BBQ"))));
+    }
+
+    @Test
+    void erroresDeCompraVuelvenALaPersonalizacionYBusquedaFiltra() throws Exception {
+        mvc.perform(post("/carrito/agregar").with(csrf()).param("productoId", "1").param("cantidad", "1"))
+            .andExpect(redirectedUrl("/personalizar/1")).andExpect(flash().attributeExists("error"));
+        mvc.perform(get("/categorias").param("buscar", "Pan al ajo"))
+            .andExpect(status().isOk()).andExpect(content().string(containsString("Pan al ajo")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Pizza Test"))));
+        mvc.perform(get("/personalizar/999")).andExpect(redirectedUrl("/categorias"));
+    }
+
+    @Test
+    @WithMockUser(username = "cliente@test.pe", roles = "ADMIN")
+    void paginasMantienenRecursosLocalesYDestinosDeModales() throws Exception {
+        for (String ruta : List.of("/", "/categorias", "/personalizar/1", "/pedido/resumen", "/pedido/entrega", "/contacto", "/registro", "/login", "/forgotpassword", "/cuenta", "/administracion", "/administracion/gestion")) {
+            String html = mvc.perform(get(ruta)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            var targets = java.util.regex.Pattern.compile("data-bs-target=\"#([^\"]+)\"").matcher(html);
+            while (targets.find()) assertTrue(html.contains("id=\"" + targets.group(1) + "\""), ruta + " -> " + targets.group(1));
+            var recursos = java.util.regex.Pattern.compile("(?:src|href)=\"(/(?:js|style)/[^\"]+)\"").matcher(html);
+            while (recursos.find()) mvc.perform(get(recursos.group(1))).andExpect(status().isOk());
+        }
     }
 
 }

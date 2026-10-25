@@ -134,10 +134,44 @@ siguen necesitando la migración indicada en la sección de preparación.
 - La vista de confirmación recibe DTO y conserva nombres/precios históricos.
   Contacto y gestión de opciones también guardan mediante JPA.
 
-El último aporte del grupo añade `shop/personalizar-bebida.html`. Se conserva
-como plantilla en desarrollo: en ese aporte no se incluye su JavaScript ni una
-ruta que la muestre. Las bebidas siguen usando `/personalizar/{id}`, el flujo
-general conectado a la base de datos, hasta completar esa integración específica.
+## Opciones de personalización y bases existentes
+
+Al iniciar la aplicación se completan, mediante JPA, las secciones de opciones
+faltantes de pizzas, bebidas y entradas de las categorías conocidas (`clasicas`,
+`especiales`, `bebidas`, `entradas`). También se completan al guardar un producto
+desde administración. Esto corrige las bases antiguas con `opciones` vacía y las
+pizzas que no tenían personalizaciones en el SQL inicial.
+
+Se conservan precios, nombres y opciones desactivadas ya configurados. Repetir el
+inicio no duplica las secciones existentes. Para una categoría nueva sin reglas
+predeterminadas, el administrador debe registrar sus opciones; la pantalla indica
+si el producto se ofrece sin extras, en vez de mostrar títulos vacíos.
+
+La personalización muestra tarjetas, selecciones iniciales y total dinámico:
+
+- Pizza: tamaño, masa, salsa y extras disponibles.
+- Bebida: presentación, temperatura y complementos propios de bebidas.
+- Entrada: extras disponibles; no muestra controles de masa de pizza.
+
+El precio base pertenece al producto. Cada opción muestra su adicional real,
+según la base de datos. Los importes se calculan otra vez en el servidor al comprar.
+Las opciones incoherentes (como BBQ o masa en una bebida) no se ofrecen ni se
+aceptan por POST. Administración tampoco permite guardar esas combinaciones.
+Salsa y temperatura se presentan como selecciones únicas; sus registros conservan
+el grupo `EXTRA` del esquema actual. No se necesita modificar las tablas para
+esta corrección.
+
+La plantilla de bebidas usa el mismo formulario y validaciones del resto de
+productos; funciona desde `/personalizar/{id}` y `/personalizar-bebida/{id}`.
+La búsqueda del inicio envía `buscar` al catálogo, y el acceso «Para compartir»
+lleva a elegir productos sin anunciar un combo de precio fijo no implementado.
+
+**Para recibir esta corrección en una base existente:** actualiza `revision-apf3`
+y reinicia Spring Boot. No borres la base ni los pedidos. El completado al arrancar
+se puede desactivar con `app.personalizacion.completar-opciones=false` si prefieres
+administrar todas las opciones manualmente. Si un carrito antiguo requiere una
+opción que ahora cambió o se desactivó, elimina esa línea y configura el producto
+de nuevo desde el menú.
 
 ## Usuarios de demostración
 

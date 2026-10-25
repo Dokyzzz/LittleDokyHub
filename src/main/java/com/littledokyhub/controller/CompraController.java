@@ -45,14 +45,21 @@ public class CompraController {
     @PostMapping("/carrito/agregar")
     String add(@RequestParam int productoId, @RequestParam(defaultValue = "1") int cantidad,
             @RequestParam(required = false) List<Integer> opciones, @RequestParam(required = false) Integer TAMANO,
-            @RequestParam(required = false) Integer MASA, HttpServletRequest req, HttpServletResponse res,
-            Principal user) {
+            @RequestParam(required = false) Integer MASA, @RequestParam(required = false) Integer SALSA,
+            @RequestParam(required = false) Integer TEMPERATURA, HttpServletRequest req, HttpServletResponse res,
+            Principal user, RedirectAttributes flash) {
         List<Integer> selected = new ArrayList<>(opciones == null ? List.of() : opciones);
         if (TAMANO != null)
             selected.add(TAMANO);
-        if (MASA != null)
-            selected.add(MASA);
-        service.agregar(cart(req, res, user), productoId, selected, cantidad);
+        if (MASA != null) selected.add(MASA);
+        if (SALSA != null) selected.add(SALSA);
+        if (TEMPERATURA != null) selected.add(TEMPERATURA);
+        try {
+            service.agregar(cart(req, res, user), productoId, selected, cantidad);
+        } catch (IllegalArgumentException ex) {
+            flash.addFlashAttribute("error", ex.getMessage());
+            return "redirect:/personalizar/" + productoId;
+        }
         return "redirect:/carrito";
     }
 

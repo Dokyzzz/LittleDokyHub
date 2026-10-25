@@ -16,6 +16,12 @@
     <div th:replace="~{fragments/header :: header('categorias')}"></div>
 
     <main>
+        <div class="container mt-3" th:if="${error}"><p class="alert alert-danger" th:text="${error}"></p></div>
+        <div class="container mt-3" th:if="${!#strings.isEmpty(buscar)}">
+            <p th:text="|Resultados para: ${buscar}|"></p>
+            <p th:if="${#lists.isEmpty(productos)}">No encontramos productos con ese nombre.</p>
+            <a th:href="@{/categorias}">Ver todo el menú</a>
+        </div>
         <!-- Banner idéntico al Index adaptado para Categorías -->
         <section class="banner-principal text-center py-5">
             <div class="container py-4">

@@ -25,14 +25,15 @@ public class CompraService {
     private final CompraSnapshotRepository compras;
     private final DetalleSnapshotRepository snapshots;
     private final Validator validator;
+    private final PersonalizacionService personalizacion;
 
     public CompraService(EntityManager em, CarritoRepository carritos, CarritoItemRepository items,
             ProductoRepository productos, OpcionRepository opciones, UsuarioRepository usuarios,
             PedidoRepository pedidos, DetallePedidoRepository detalles, CompraSnapshotRepository compras,
-            DetalleSnapshotRepository snapshots, Validator validator) {
+            DetalleSnapshotRepository snapshots, Validator validator, PersonalizacionService personalizacion) {
         this.em = em; this.carritos = carritos; this.items = items; this.productos = productos;
         this.opciones = opciones; this.usuarios = usuarios; this.pedidos = pedidos;
-        this.detalles = detalles; this.compras = compras; this.snapshots = snapshots; this.validator = validator;
+        this.detalles = detalles; this.compras = compras; this.snapshots = snapshots; this.validator = validator; this.personalizacion = personalizacion;
     }
 
     private <T> T bloquear(Class<T> tipo, Object id) {
@@ -55,7 +56,7 @@ public class CompraService {
     }
 
     public List<Opcion> opciones(int id) {
-        return opciones.findByProductoIdAndActivoTrueOrderByGrupoAscIdAsc(id);
+        return opciones.findByProductoIdAndActivoTrueOrderByGrupoAscIdAsc(id).stream().filter(personalizacion::coherente).toList();
     }
 
     public String carrito(String token, String email) {
@@ -107,9 +108,9 @@ public class CompraService {
         var all = opciones(pid);
         var chosen = all.stream().filter(o -> selected.contains(o.getId())).toList();
         if (chosen.size() != selected.size()) throw new IllegalArgumentException("Una opción ya no está disponible");
-        for (String group : List.of("TAMANO", "MASA"))
-            if (all.stream().anyMatch(o -> group.equals(o.getGrupo()))
-                    && chosen.stream().filter(o -> group.equals(o.getGrupo())).count() != 1)
+        for (String group : List.of("TAMANO", "MASA", "SALSA", "TEMPERATURA"))
+            if (all.stream().anyMatch(o -> group.equals(personalizacion.seccion(o)))
+                    && chosen.stream().filter(o -> group.equals(personalizacion.seccion(o))).count() != 1)
                 throw new IllegalArgumentException("Selecciona una opción de " + group);
         return chosen;
     }

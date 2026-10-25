@@ -22,4 +22,5 @@ public interface OpcionRepository extends JpaRepository<Opcion, Integer> {
             @Param("productoId") Integer productoId, @Param("incluirInactivas") boolean incluirInactivas);
     java.util.List<Opcion> findByProductoIdAndActivoTrueOrderByGrupoAscIdAsc(Integer productoId);
 
+    java.util.List<Opcion> findByProductoIdOrderById(Integer productoId);
 }

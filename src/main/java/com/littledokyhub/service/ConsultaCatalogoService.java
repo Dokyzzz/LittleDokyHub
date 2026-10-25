@@ -17,12 +17,14 @@ public class ConsultaCatalogoService {
     private final CategoriaRepository categorias;
     private final ProductoRepository productos;
     private final OpcionRepository opciones;
+    private final PersonalizacionService personalizacion;
 
     public ConsultaCatalogoService(CategoriaRepository categorias, ProductoRepository productos,
-            OpcionRepository opciones) {
+            OpcionRepository opciones, PersonalizacionService personalizacion) {
         this.categorias = categorias;
         this.productos = productos;
         this.opciones = opciones;
+        this.personalizacion = personalizacion;
     }
 
     public List<ProductoSeleccion> productos(Integer categoriaId, boolean administracion) {
@@ -36,6 +38,10 @@ public class ConsultaCatalogoService {
                 : productos.existsByIdAndCategoriaIdAndStockGreaterThan(productoId, categoriaId, 0);
         if (!valido)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no disponible en esta categoría");
-        return opciones.consultarPorProducto(categoriaId, productoId, administracion);
+        var lista = opciones.consultarPorProducto(categoriaId, productoId, administracion);
+        if (administracion) return lista;
+        var permitidas = opciones.findByProductoIdAndActivoTrueOrderByGrupoAscIdAsc(productoId).stream()
+                .filter(personalizacion::coherente).map(o -> o.getId()).collect(java.util.stream.Collectors.toSet());
+        return lista.stream().filter(o -> permitidas.contains(o.id())).toList();
     }
 }

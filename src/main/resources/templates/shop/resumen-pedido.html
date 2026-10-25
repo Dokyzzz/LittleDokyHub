@@ -18,7 +18,7 @@
 <label th:for="|cantidad-${l.id}|">Cantidad</label>
 <input th:id="|cantidad-${l.id}|" type="number" class="form-control" style="max-width:90px" name="cantidad" min="0" max="99" th:value="${l.cantidad}" required>
 <button class="btn btn-outline-secondary" type="submit">Actualizar</button>
-<button class="btn btn-outline-danger" type="submit" th:formaction="@{/carrito/eliminar}">Quitar</button>
+<button class="btn btn-outline-danger" type="submit" formnovalidate th:formaction="@{/carrito/eliminar}">Quitar</button>
 </form><strong th:text="|Subtotal: S/ ${#numbers.formatDecimal(l.subtotal,1,2)}|"></strong></article>
 </section></div><aside class="col-lg-4"><div class="summary-card p-4">
 <h2 class="h5">Total de productos</h2><p class="fs-3" th:text="|S/ ${#numbers.formatDecimal(subtotal,1,2)}|"></p>

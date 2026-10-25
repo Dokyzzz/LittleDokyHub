@@ -25,6 +25,9 @@ public class AdminProductoController {
     private ProductoService productoService;
 
     @Autowired
+    private com.littledokyhub.service.PersonalizacionService personalizacion;
+
+    @Autowired
     private CategoriaService categoriaService;
 
     @Autowired
@@ -73,6 +76,7 @@ public class AdminProductoController {
         
         // El servicio procesa el guardado mediante JPA
         if (productoService.guardar(producto)) {
+            personalizacion.completarProducto(producto.getId());
             flash.addFlashAttribute("exito",
                     esNuevo ? "Producto creado correctamente." : "Producto actualizado correctamente.");
         } else {
