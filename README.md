@@ -3,10 +3,16 @@
 Aplicación de pedidos de pizzería con Spring Boot 3.3.4, Java 17, Thymeleaf,
 Spring Security, Spring Data JPA/Hibernate y MySQL 8+.
 
-La persistencia combina Spring Data JPA/Hibernate con `JdbcTemplate`: las
-entidades, los CRUD de productos/categorías y las consultas en cascada usan JPA;
-el flujo de compras usa JDBC dentro de transacciones, y parte de la gestión de
-opciones también utiliza JDBC.
+La persistencia de la aplicación utiliza **JPA/Hibernate**: productos, categorías,
+usuarios, opciones, contacto, carritos y pedidos se gestionan mediante entidades,
+repositorios Spring Data JPA y servicios transaccionales. Las consultas en cascada
+usan JPQL y proyecciones DTO; la confirmación del pedido usa bloqueos JPA para
+proteger el stock y conserva sus detalles y datos de entrega.
+
+El código de aplicación no utiliza `JdbcTemplate` ni consultas SQL nativas.
+Hibernate sí utiliza internamente JDBC y el controlador de MySQL para conectarse.
+Los scripts SQL de instalación/migración se conservan como entregables; algunas
+pruebas usan JDBC únicamente para preparar datos y comprobar resultados.
 
 ## Requisitos
 
@@ -111,6 +117,28 @@ Cuando la consola indique que la aplicación ha iniciado, abre
 `http://localhost:8081`. Si cambias `PORT`, usa ese puerto en la dirección.
 Para detenerla, pulsa `Ctrl+C` en la terminal donde se está ejecutando.
 
+## Persistencia y compatibilidad de la migración a JPA
+
+Se mantienen las tablas, claves foráneas, identificadores y rutas de la aplicación.
+Esta migración a JPA no requiere un nuevo script SQL para una base que ya cumple
+el esquema actual. Las bases de versiones anteriores con importes `Double`
+siguen necesitando la migración indicada en la sección de preparación.
+
+- El carrito de invitado se fusiona con el del usuario al iniciar sesión sin
+  duplicar configuraciones. Los cambios se guardan mediante entidades JPA.
+- La confirmación valida la propiedad del carrito, las opciones y el stock total
+  por producto, incluso si aparece con varias configuraciones.
+- El stock se bloquea mediante `PESSIMISTIC_WRITE` y los productos se bloquean
+  en orden de ID. Pedido, detalles, snapshots, stock y vaciado del carrito forman
+  una sola transacción: un error revierte la operación.
+- La vista de confirmación recibe DTO y conserva nombres/precios históricos.
+  Contacto y gestión de opciones también guardan mediante JPA.
+
+El último aporte del grupo añade `shop/personalizar-bebida.html`. Se conserva
+como plantilla en desarrollo: en ese aporte no se incluye su JavaScript ni una
+ruta que la muestre. Las bebidas siguen usando `/personalizar/{id}`, el flujo
+general conectado a la base de datos, hasta completar esa integración específica.
+
 ## Usuarios de demostración
 
 Solo para una base local de desarrollo:
@@ -198,7 +226,9 @@ listas vacías, errores y reintento. Las pruebas de servidor comprueban por sepa
 los permisos reales y las consultas contra la base de datos.
 
 Las pruebas de servidor usan H2 en modo MySQL, aislada de la base local; incluyen
-renderizado Thymeleaf con MockMvc, reglas de carrito, confirmación, permisos y CRUD. H2 no
+renderizado Thymeleaf con MockMvc, reglas de carrito, confirmación, permisos y CRUD.
+También comprueban fusión de carritos, doble confirmación, rollback y dos compras
+concurrentes del último stock mediante transacciones independientes. H2 no
 sustituye la prueba final sobre MySQL 8 ni la revisión visual en navegador.
 
 Ver [revisión del avance 3](docs/revision-avance3.md) para hallazgos, correcciones,

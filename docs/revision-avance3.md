@@ -65,7 +65,7 @@ que el informe use de forma consistente este alcance y sus entidades reales.
 | --- | --- |
 | Spring Boot, Thymeleaf, MySQL, JPA/Hibernate | Dependencias y configuración existentes, entidades y repositorios. Ejecución automatizada verificada con H2, no con MySQL real. |
 | Mínimo 5 tablas relacionadas | Se identifican 12 tablas y se incluye estructura SQL. `mensajes` es independiente; las otras 11 forman el modelo conectado. |
-| Entidades, repositorios, servicios y controladores | Existen. Compras y parte de gestión aún usan JDBC; si el profesor exige JPA en todos los flujos, migrarlos a los repositorios existentes. |
+| Entidades, repositorios, servicios y controladores | Existen. La aplicación usa JPA/Hibernate en todos los flujos de persistencia, incluidos compras, contacto y gestión de opciones. |
 | Dos CRUD completos con Bootstrap | Categorías y productos. Productos usa baja lógica mediante stock cero; documentarlo en la exposición. |
 | Relaciones entre entidades | `ManyToOne`, `OneToOne`, `MapsId`, claves foráneas en SQL. |
 | Validación y mensajes en formularios | Validaciones de producto, categoría, registro y checkout; errores visibles. Administración muestra un resumen por redirección; conviene conservar los valores y asociar cada mensaje a su campo. |
@@ -77,7 +77,7 @@ que el informe use de forma consistente este alcance y sus entidades reales.
 
 ## Comprobaciones
 
-Resultado actualizado: **24 pruebas de servidor** mediante `./mvnw test` y **7 pruebas de interacción** mediante `npm run test:ui`, sin fallos ni errores.
+Resultado actualizado: **30 pruebas de servidor** mediante `./mvnw test` y **7 pruebas de interacción** mediante `npm run test:ui`, sin fallos ni errores.
 
 - Pruebas existentes de codificación de contraseñas, migración BCrypt y carga de imágenes.
 - Inicio del contexto Spring Boot con esquema JPA aislado.
@@ -100,7 +100,7 @@ entregar, probar importación, login demo, CRUD y pedido completo sobre MySQL 8.
 1. Mostrar las dos consultas en cascada en la exposición y añadir capturas: categoría → producto → opción en catálogo y gestión, incluida una categoría vacía y el cambio de selección.
 2. Probar la instalación desde cero sobre MySQL 8 y crear capturas reales de registrar/listar/editar/retirar producto y registrar/listar/editar/eliminar categoría.
 3. Añadir el diagrama ER y actualizar el informe con las 12 tablas, relaciones, baja lógica, DTO y validaciones realmente implementadas.
-4. Si se exige persistencia exclusivamente JPA, llevar compras y edición de opciones a repositorios/servicios JPA, manteniendo transacciones y bloqueos del stock.
+4. Migración a JPA completada: mantener las pruebas de transacciones y ampliar su ejecución sobre MySQL real.
 5. Conservar datos de formularios administrativos cuando hay error, mostrar mensajes por campo y paginar listados. No cargar todo el catálogo y los mensajes en cada petición.
 6. Definir una política única de contraseñas para registro y cambio. Implementar recuperación por correo con tokens de un solo uso y expiración si entra en el alcance.
 7. Añadir estados de pedido administrables, historial del cliente y pruebas concurrentes en MySQL para compras del último stock y doble confirmación. Los bloqueos existentes necesitan comprobarse con ese motor.
@@ -133,3 +133,30 @@ referencias inválidas y renderizado de ambas páginas. Las siete pruebas de jsd
 comprueban limpieza de hijos, respuestas fuera de orden, listas vacías, errores,
 reintento, filtrado/edición y representación segura de nombres. No equivalen a
 una revisión visual en navegador. No se requieren cambios de SQL para las cascadas.
+
+
+## Actualización: persistencia de aplicación con JPA
+
+Se reemplazó el acceso directo con JdbcTemplate en CompraService,
+CompraController, GestionController y ContactoController. Ahora se usan
+repositorios JPA, entidades, servicios transaccionales y DTO para la vista del
+pedido. Los bloqueos PESSIMISTIC_WRITE conservan la protección de carrito y stock;
+los productos se bloquean ordenados por ID y se comprueba el stock agregado de
+sus distintas configuraciones antes de crear un pedido.
+
+Se conservan tablas, relaciones y rutas. No se necesita otra migración SQL para
+una base ya compatible con el esquema de esta rama. JDBC permanece como mecanismo
+interno de Hibernate y como herramienta de preparación/verificación en pruebas.
+No hay consultas SQL nativas en el código de aplicación.
+
+Se incorporó el commit del grupo ac9e6f7 (plantilla de bebidas e icono), conservando
+la personalización general operativa. La plantilla nueva aún no estaba conectada
+por el aporte original y referencia un JavaScript ausente; queda documentada como
+pendiente, sin sustituir la ruta funcional de bebidas.
+
+Pruebas adicionales: fusión persistente del carrito, stock agregado entre
+configuraciones sin pedido parcial, doble confirmación e historial, y dos compras
+simultáneas del último stock. Estas cuatro pruebas no usan una transacción externa
+que oculte los commits o rollback del servicio. Además se prueban contacto y
+registro/edición de opciones mediante los endpoints existentes. El motor de las
+pruebas sigue siendo H2; queda pendiente comprobar estos bloqueos con MySQL real.

@@ -260,4 +260,38 @@ class CommerceIntegrationTests {
             .andExpect(content().string(containsString("data-editar")));
     }
 
+    @Test
+    void contactoGuardaConJpaYConservaRedireccion() throws Exception {
+        int antes = db.queryForObject("SELECT COUNT(*) FROM mensajes", Integer.class);
+        mvc.perform(post("/contacto").with(csrf()).param("nombre", "Ana Test")
+            .param("email", "ana@test.pe").param("telefono", "999999999")
+            .param("asunto", "Consulta").param("mensaje", "Mensaje de prueba"))
+            .andExpect(redirectedUrl("/contacto")).andExpect(flash().attributeExists("exito"));
+        assertEquals(antes + 1, db.queryForObject("SELECT COUNT(*) FROM mensajes", Integer.class));
+        mvc.perform(post("/contacto").with(csrf()).param("nombre", "")
+            .param("email", "mal").param("telefono", "").param("asunto", "Consulta").param("mensaje", ""))
+            .andExpect(redirectedUrl("/contacto")).andExpect(flash().attributeExists("error"));
+        assertEquals(antes + 1, db.queryForObject("SELECT COUNT(*) FROM mensajes", Integer.class));
+    }
+
+    @Test
+    @WithMockUser(username = "cliente@test.pe", roles = "ADMIN")
+    void opcionSeRegistraEditaYConsultaConJpa() throws Exception {
+        mvc.perform(post("/administracion/gestion/opcion").with(csrf()).param("productoId", "2")
+            .param("grupo", "EXTRA").param("nombre", "Salsa nueva").param("precio", "1.50").param("activo", "true"))
+            .andExpect(redirectedUrl("/administracion/gestion"));
+        int id = db.queryForObject("SELECT id FROM opciones WHERE nombre='Salsa nueva'", Integer.class);
+        mvc.perform(post("/administracion/gestion/opcion").with(csrf()).param("id", String.valueOf(id))
+            .param("productoId", "2").param("grupo", "EXTRA").param("nombre", "Salsa editada").param("precio", "2.50"))
+            .andExpect(redirectedUrl("/administracion/gestion"));
+        mvc.perform(get("/administracion/consultas/categorias/2/productos/2/opciones"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].nombre").value("Salsa editada"))
+            .andExpect(jsonPath("$[0].activo").value(false));
+        mvc.perform(get("/api/catalogo/categorias/2/productos/2/opciones"))
+            .andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(post("/administracion/gestion/opcion").with(csrf()).param("productoId", "999")
+            .param("grupo", "EXTRA").param("nombre", "No existe").param("precio", "1.00"))
+            .andExpect(redirectedUrl("/administracion/gestion")).andExpect(flash().attributeExists("error"));
+    }
+
 }

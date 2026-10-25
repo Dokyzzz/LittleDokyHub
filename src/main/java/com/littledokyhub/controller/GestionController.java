@@ -3,7 +3,8 @@ package com.littledokyhub.controller;
 import com.littledokyhub.model.Categoria;
 import com.littledokyhub.repository.CategoriaRepository;
 import jakarta.validation.Valid;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.littledokyhub.service.GestionCatalogoService;
+import com.littledokyhub.service.ProductoService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -18,15 +19,17 @@ import com.littledokyhub.service.CategoriaService;
 @RequestMapping("/administracion/gestion")
 public class GestionController {
     private final CategoriaRepository categorias;
-    private final JdbcTemplate db;
+    private final GestionCatalogoService gestion;
+    private final ProductoService productos;
     private final OpcionRepository opciones;
     private final MensajeRepository mensajes;
     private final CategoriaService categoriaService;
 
-    public GestionController(CategoriaRepository categorias, JdbcTemplate db, OpcionRepository opciones,
+    public GestionController(CategoriaRepository categorias, GestionCatalogoService gestion, ProductoService productos, OpcionRepository opciones,
             MensajeRepository mensajes, CategoriaService categoriaService) {
         this.categorias = categorias;
-        this.db = db;
+        this.gestion = gestion;
+        this.productos = productos;
         this.opciones = opciones;
         this.mensajes = mensajes;
         this.categoriaService = categoriaService;
@@ -36,7 +39,7 @@ public class GestionController {
     String page(Model m) {
         m.addAttribute("mensajes", mensajes.findAllByOrderByFechaDesc());
         m.addAttribute("categorias", categorias.findAll());
-        m.addAttribute("productos", db.queryForList("SELECT id,nombre FROM productos"));
+        m.addAttribute("productos", productos.listar());
         m.addAttribute("opciones", opciones.listarConProducto());
         return "admin/gestion";
     }
@@ -54,9 +57,7 @@ public class GestionController {
 
     @PostMapping("/categoria/{id}/eliminar")
     String delete(@PathVariable int id) {
-        if (db.queryForObject("SELECT COUNT(*) FROM productos WHERE categoria_id=?", Integer.class, id) > 0)
-            throw new IllegalArgumentException("La categoría tiene productos; reasígnalos antes de eliminarla");
-        categorias.deleteById(id);
+        gestion.eliminarCategoria(id);
         return "redirect:/administracion/gestion";
     }
 
@@ -67,12 +68,7 @@ public class GestionController {
         if (!java.util.List.of("TAMANO", "MASA", "EXTRA").contains(grupo) || nombre.isBlank() || nombre.length() > 100
                 || precio.signum() < 0 || precio.compareTo(new BigDecimal("99999")) > 0 || precio.scale() > 2)
             throw new IllegalArgumentException("Revisa el nombre, grupo y precio de la opción");
-        if (id == null)
-            db.update("INSERT INTO opciones(producto_id,grupo,nombre,precio,activo) VALUES(?,?,?,?,?)", productoId,
-                    grupo, nombre, precio, activo);
-        else if (db.update("UPDATE opciones SET producto_id=?,grupo=?,nombre=?,precio=?,activo=? WHERE id=?", productoId,
-                    grupo, nombre, precio, activo, id) != 1)
-            throw new IllegalArgumentException("La opción que intentas editar no existe");
+        gestion.guardarOpcion(id, productoId, grupo, nombre, precio, activo);
         return "redirect:/administracion/gestion";
     }
 

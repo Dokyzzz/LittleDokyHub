@@ -118,17 +118,10 @@ public class CompraController {
 
     @GetMapping("/pedidos/{id}")
     String pedido(@PathVariable int id, Principal user, Model model) {
-        var orders = service.query(
-                "SELECT p.* FROM pedidos p JOIN usuarios u ON u.id=p.usuario_id WHERE p.id=? AND u.email=?", id,
-                user.getName());
-        if (orders.isEmpty())
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.NOT_FOUND);
-        model.addAttribute("pedido", orders.get(0));
-        model.addAttribute("detalles", service.query(
-                "SELECT d.*,s.nombre,s.personalizacion FROM detalles_pedido d JOIN detalle_snapshot s ON s.detalle_id=d.id WHERE d.pedido_id=?",
-                id));
-        model.addAttribute("entrega", service.query("SELECT entrega,direccion,pago FROM compra_snapshot WHERE pedido_id=?", id));
+        var vista = service.consultarPedido(id, user.getName());
+        model.addAttribute("pedido", vista.pedido());
+        model.addAttribute("detalles", vista.detalles());
+        model.addAttribute("entrega", vista.entrega());
         return "shop/pedido";
     }
 

@@ -7,4 +7,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DetalleSnapshotRepository extends JpaRepository<DetalleSnapshot, Integer> {
+    java.util.Optional<DetalleSnapshot> findByDetallePedidoId(Integer id);
+
 }

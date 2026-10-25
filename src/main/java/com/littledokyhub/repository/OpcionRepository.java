@@ -20,4 +20,6 @@ public interface OpcionRepository extends JpaRepository<Opcion, Integer> {
             + "and (:incluirInactivas = true or o.activo = true) order by o.grupo, o.nombre, o.id")
     List<OpcionListado> consultarPorProducto(@Param("categoriaId") Integer categoriaId,
             @Param("productoId") Integer productoId, @Param("incluirInactivas") boolean incluirInactivas);
+    java.util.List<Opcion> findByProductoIdAndActivoTrueOrderByGrupoAscIdAsc(Integer productoId);
+
 }

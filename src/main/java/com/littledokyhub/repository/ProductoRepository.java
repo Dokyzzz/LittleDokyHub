@@ -21,4 +21,6 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
             + "and (:incluirAgotados = true or p.stock > 0) order by p.nombre, p.id")
     List<ProductoSeleccion> consultarPorCategoria(@Param("categoriaId") Integer categoriaId,
             @Param("incluirAgotados") boolean incluirAgotados);
+    boolean existsByCategoriaId(Integer categoriaId);
+
 }
