@@ -1,6 +1,7 @@
 package com.littledokyhub.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,8 +20,8 @@ public class Pedido {
 
     @NotNull(message = "El monto total es obligatorio")
     @DecimalMin(value = "0.00", message = "El total no puede ser negativo")
-    @Column(nullable = false)
-    private Double total;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal total;
 
     @NotBlank(message = "El estado del pedido es obligatorio")
     @Column(nullable = false, length = 30)
@@ -47,8 +48,8 @@ public class Pedido {
     public LocalDateTime getFecha() { return fecha; }
     public void setFecha(LocalDateTime fecha) { this.fecha = fecha; }
 
-    public Double getTotal() { return total; }
-    public void setTotal(Double total) { this.total = total; }
+    public BigDecimal getTotal() { return total; }
+    public void setTotal(BigDecimal total) { this.total = total; }
 
     public String getEstado() { return estado; }
     public void setEstado(String estado) { this.estado = estado; }

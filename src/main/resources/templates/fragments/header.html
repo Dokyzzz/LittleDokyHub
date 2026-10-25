@@ -29,6 +29,7 @@
                             <li><a class="dropdown-item" th:href="@{/categorias#clasicas}">Clásicas</a></li>
                             <li><a class="dropdown-item" th:href="@{/categorias#especiales}">Especiales</a></li>
                             <li><a class="dropdown-item" th:href="@{/categorias#bebidas}">Bebidas</a></li>
+                            <li><a class="dropdown-item" th:href="@{/categorias#entradas}">Entradas</a></li>
                         </ul>
                     </li>
                     <li class="nav-item">
@@ -61,7 +62,7 @@
 
                             <span class="text-white small fw-bold d-flex align-items-center gap-1">
                                 <i class="bi bi-person-fill text-warning fs-5" id="userIcon"></i>
-                                <span id="navUsuarioNombre" th:text="${sesionNombre}"></span>
+                                <a class="text-white" th:href="@{/cuenta}" id="navUsuarioNombre" th:text="${sesionNombre}"></a>
                             </span>
 
                             <form th:action="@{/logout}" method="post" class="mb-0">

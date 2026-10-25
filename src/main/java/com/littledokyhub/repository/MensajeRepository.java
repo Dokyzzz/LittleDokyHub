@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
+    java.util.List<Mensaje> findAllByOrderByFechaDesc();
     // Puedes agregar consultas personalizadas si lo necesitas en el futuro, por ejemplo:
     // List<Mensaje> findByEmail(String email);
 }

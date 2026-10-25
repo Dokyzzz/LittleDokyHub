@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org" th:fragment="personalizacion">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Personaliza tu pizza | Little Doky's Hub</title>
+    <title th:text="|Personaliza tu ${tipoProducto} · Little Doky Hub|">Personaliza tu producto</title>
     <link rel="shortcut icon" th:href="@{/favicon.ico}" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -17,103 +17,63 @@
         <nav aria-label="breadcrumb" class="mb-3">
             <ol class="breadcrumb small">
                 <li class="breadcrumb-item"><a th:href="@{/categorias}">Menú</a></li>
-                <li class="breadcrumb-item active">Personaliza tu pizza</li>
+                <li class="breadcrumb-item active" th:text="|Personaliza tu ${tipoProducto}|"></li>
             </ol>
         </nav>
         <div class="row g-4 g-lg-5">
             <div class="col-lg-5">
                 <div class="bg-white rounded-4 p-3 p-lg-4 shadow-sm text-center position-sticky custom-product-sticky">
-                    <span class="badge rounded-pill text-bg-warning mb-3">HECHA A TU GUSTO</span>
+                    <span class="badge rounded-pill text-bg-warning mb-3" th:text="${tipoProducto == 'bebida' ? 'A TU GUSTO' : 'HECHA A TU GUSTO'}">A TU GUSTO</span>
                     <img class="pizza-photo" id="pizzaImage" th:src="@{${producto.imagenUrl}}"
                         th:alt="${producto.nombre}">
                     <h2 class="h3 fw-bold mt-3" th:text="${producto.nombre}" id="pizzaName">Pizza</h2>
                     <p class="text-secondary" th:text="${producto.descripcion}">Descripción</p>
-                    <div class="d-flex justify-content-center gap-3 small text-secondary"><span><i
-                                class="bi bi-fire text-danger"></i> Recién horneada</span><span><i
-                                class="bi bi-check-circle text-success"></i> Ingredientes frescos</span></div>
+                    <p class="small text-secondary" th:text="${tipoProducto == 'pizza' ? 'Recién horneada · Ingredientes frescos' : (tipoProducto == 'bebida' ? 'Elige cómo prefieres recibirla' : 'Preparada para acompañar tu pedido')}"></p>
                 </div>
             </div>
             <div class="col-lg-7">
-                <h1 class="display-6 fw-bold mb-1">Personaliza tu pizza</h1>
-                <p class="text-secondary mb-4">Elige el tamaño, la masa y los ingredientes. El precio se actualiza
+                <h1 class="display-6 fw-bold mb-1" th:text="|Personaliza tu ${tipoProducto}|"></h1>
+                <p class="text-secondary mb-4">Elige entre las opciones disponibles. El precio se actualiza
                     automáticamente.</p>
-                <section class="mb-4">
-                    <h3 class="h5 step-title">1. Elige el tamaño</h3>
-                    <div class="row g-2 mt-1">
-                        <div class="col-4"><label class="option-card"><input type="radio" name="size" value="Personal"
-                                    data-extra="0" checked><span><b>Personal</b><small class="d-block text-secondary">6
-                                        porciones pequeñas</small></span></label></div>
-                        <div class="col-4"><label class="option-card"><input type="radio" name="size" value="Mediana"
-                                    data-extra="10"><span><b>Mediana</b><small class="d-block text-secondary">Para
-                                        compartir</small><small class="text-success">+ S/ 10</small></span></label>
+                <div class="alert alert-danger" th:if="${error}" th:text="${error}"></div>
+                <form id="personalizar" th:action="@{/carrito/agregar}" method="post" th:attr="data-base=${producto.precio}">
+                    <input type="hidden" name="productoId" th:value="${producto.id}">
+                    <section class="mb-4" th:each="seccion, paso : ${secciones}">
+                        <h2 class="h5 step-title" th:text="|${paso.count}. ${seccion.titulo}|"></h2>
+                        <p th:if="${seccion.multiple}" class="small text-secondary">Opcional: puedes elegir varios extras.</p>
+                        <div class="row g-2 mt-1">
+                            <div class="col-sm-6" th:each="o, estado : ${seccion.opciones}">
+                                <label class="option-card h-100">
+                                    <input th:type="${seccion.multiple ? 'checkbox' : 'radio'}"
+                                        th:name="${seccion.multiple ? 'opciones' : seccion.codigo}" th:value="${o.id}"
+                                        th:checked="${!seccion.multiple and estado.first}"
+                                        th:required="${!seccion.multiple}" th:attr="data-precio=${o.precio}">
+                                    <span><b th:text="${o.nombre}"></b><small class="d-block text-success"
+                                        th:text="${o.precio.signum() == 0 ? 'Incluido' : '+ S/ ' + #numbers.formatDecimal(o.precio,1,2)}"></small></span>
+                                </label>
+                            </div>
                         </div>
-                        <div class="col-4"><label class="option-card"><input type="radio" name="size" value="Familiar"
-                                    data-extra="20"><span><b>Familiar</b><small class="d-block text-secondary">Para
-                                        todos</small><small class="text-success">+ S/ 20</small></span></label></div>
+                    </section>
+                    <p class="alert alert-info" th:if="${#lists.isEmpty(secciones)}">Este producto se ofrece en su presentación habitual, sin extras disponibles. Puedes elegir la cantidad.</p>
+                    <label class="form-label" for="cantidad">Cantidad</label>
+                    <div class="d-flex gap-3 align-items-center mb-3">
+                        <button type="button" class="btn btn-outline-secondary" data-quantity-step="-1" aria-label="Reducir cantidad">−</button>
+                        <input id="cantidad" class="form-control text-center" style="max-width:100px" type="number" name="cantidad" min="1"
+                            th:max="${T(java.lang.Math).max(1,T(java.lang.Math).min(99,producto.stock))}" value="1" required>
+                        <button type="button" class="btn btn-outline-secondary" data-quantity-step="1" aria-label="Aumentar cantidad">+</button>
                     </div>
-                </section>
-                <section class="mb-4">
-                    <h3 class="h5 step-title">2. Tipo de masa</h3>
-                    <div class="row g-2 mt-1">
-                        <div class="col-md-6"><label class="option-card"><input type="radio" name="crust"
-                                    value="Tradicional" data-extra="0" checked><span><b>Tradicional</b><small
-                                        class="d-block text-secondary">Suave por dentro, dorada por
-                                        fuera</small></span></label></div>
-                        <div class="col-md-6"><label class="option-card"><input type="radio" name="crust"
-                                    value="Borde relleno de queso" data-extra="7"><span><b>Borde relleno de
-                                        queso</b><small class="d-block text-secondary">Un extra de queso
-                                        fundido</small><small class="text-success">+ S/ 7</small></span></label></div>
+                    <div class="sticky-total d-flex justify-content-between align-items-center">
+                        <strong class="fs-3">S/ <span id="precio" th:text="${producto.precio}"></span></strong>
+                        <button class="btn btn-main px-4 py-3" type="submit" th:disabled="${producto.stock == 0}">Agregar al pedido</button>
                     </div>
-                </section>
-                <section class="mb-4">
-                    <h3 class="h5 step-title">3. Salsa</h3>
-                    <div class="row g-2 mt-1">
-                        <div class="col-6"><label class="option-card"><input type="radio" name="sauce"
-                                    value="Salsa de tomate" checked><span><b>Tomate clásico</b></span></label></div>
-                        <div class="col-6"><label class="option-card"><input type="radio" name="sauce"
-                                    value="Salsa BBQ"><span><b>Salsa BBQ</b></span></label></div>
-                    </div>
-                </section>
-                <section class="mb-4">
-                    <h3 class="h5 step-title">4. Agrega ingredientes extra</h3>
-                    <p class="text-secondary small">Puedes elegir varios; cada extra cuesta S/ 3.50.</p>
-                    <div class="row g-2">
-                        <div class="col-sm-6"
-                            th:each="ing : ${ {'Pepperoni','Champiñones','Aceitunas','Jamón','Tocino','Pimiento','Queso extra'} }">
-                            <label class="option-card"><input class="topping" type="checkbox" th:value="${ing}"
-                                    data-extra="3.5"><span th:text="${ing}">Ingrediente</span><span
-                                    class="addon-price">+ S/ 3.50</span></label></div>
-                    </div>
-                </section>
-                <section class="mb-4">
-                    <h3 class="h5 step-title">5. ¿Cuántas pizzas?</h3>
-                    <div class="d-flex align-items-center gap-3"><button
-                            class="btn btn-outline-secondary rounded-circle" id="minusQty" type="button"
-                            aria-label="Reducir cantidad"><i class="bi bi-dash-lg"></i></button><span
-                            class="fs-5 fw-bold" id="qtyLabel">1</span><button
-                            class="btn btn-outline-secondary rounded-circle" id="plusQty" type="button"
-                            aria-label="Aumentar cantidad"><i class="bi bi-plus-lg"></i></button><span
-                            class="text-secondary small">pizza(s)</span></div>
-                </section>
-                <div class="sticky-total d-flex align-items-center justify-content-between gap-3">
-                    <div><small class="text-secondary d-block">Total de esta personalización</small><strong class="fs-3"
-                            id="totalPrice">S/ 0.00</strong></div><button class="btn btn-main px-4 py-3" id="addPizza"
-                        type="button"><i class="bi bi-cart-check me-2"></i>Agregar al pedido</button>
-                </div>
+                    <p th:if="${producto.stock == 0}" class="text-danger mt-3">Producto agotado.</p>
+                </form>
             </div>
         </div>
     </main>
     <div th:replace="~{fragments/modals :: modalCarrito}"></div>
     <footer th:replace="~{fragments/footer :: footer}"></footer>
-    <script th:inline="javascript">
-        window.pizzaProduct = {
-            id: /*[[${producto.id}]]*/ 0,
-            name: /*[[${producto.nombre}]]*/ "Pizza",
-            price: /*[[${producto.precio}]]*/ 0,
-            image: /*[[@{${producto.imagenUrl}}]]*/ ""
-        };
-    </script>
-    <script th:src="@{/js/personalizar.js}"></script>
+    <script th:src="@{/js/producto.js}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script th:src="@{/js/main.js}"></script>
 </body>

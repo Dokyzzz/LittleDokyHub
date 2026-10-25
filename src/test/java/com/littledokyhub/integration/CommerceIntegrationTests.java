@@ -1,0 +1,366 @@
+package com.littledokyhub.integration;
+
+import com.littledokyhub.form.CheckoutForm;
+import com.littledokyhub.service.CompraService;
+import com.littledokyhub.service.ProductoService;
+import com.littledokyhub.service.CategoriaService;
+import com.littledokyhub.repository.CategoriaRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+import jakarta.servlet.http.Cookie;
+import java.math.BigDecimal;
+import java.util.List;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
+@WithMockUser(username = "cliente@test.pe", roles = "CLIENTE")
+class CommerceIntegrationTests {
+    @Autowired MockMvc mvc;
+    @Autowired JdbcTemplate db;
+    @Autowired CompraService compra;
+    @Autowired ProductoService productos;
+    @Autowired CategoriaService categorias;
+    @Autowired CategoriaRepository categoriaRepository;
+    @Autowired com.littledokyhub.service.PersonalizacionService personalizacion;
+
+    @BeforeEach
+    void seed() {
+        db.update("INSERT INTO roles(id,nombre) VALUES(1,'CLIENTE'),(2,'ADMIN')");
+        db.update("INSERT INTO usuarios(id,nombre,email,password,activo,rol_id) VALUES(1,'Cliente Demo','cliente@test.pe','password123',true,1),(2,'Otro Cliente','otro@test.pe','password123',true,1)");
+        db.update("INSERT INTO categorias(id,codigo,nombre,descripcion,icono) VALUES(1,'clasicas','Clásicas','Descripción original','bi-star'),(2,'entradas','Entradas',null,null)");
+        db.update("INSERT INTO productos(id,nombre,precio,stock,categoria_id,imagen_url) VALUES(1,'Pizza Test',32.00,10,1,'/images/logo.png'),(2,'Pan al ajo',10.00,5,2,'/images/logo.png')");
+        db.update("INSERT INTO opciones(id,producto_id,grupo,nombre,precio,activo) VALUES(1,1,'TAMANO','Mediana',0,true),(2,1,'TAMANO','Familiar',12,true),(3,1,'MASA','Clásica',0,true),(4,1,'EXTRA','Queso',4,true),(5,1,'EXTRA','Inactiva',3,false)");
+        db.update("INSERT INTO mensajes(nombre,email,asunto,mensaje,fecha) VALUES('Cliente','cliente@test.pe','Consulta','Hola',CURRENT_TIMESTAMP)");
+    }
+
+    @Test
+    void paginasPublicasYCarritoSeRenderizan() throws Exception {
+        for (String path : List.of("/", "/categorias", "/personalizar/1", "/pedido/resumen", "/pedido/entrega", "/contacto", "/registro", "/login", "/forgotpassword", "/verifycode", "/resetpassword", "/cuenta"))
+            mvc.perform(get(path)).andExpect(status().isOk());
+        mvc.perform(get("/categorias")).andExpect(content().string(containsString("Pan al ajo")));
+        mvc.perform(get("/personalizar/1")).andExpect(content().string(containsString("Familiar")));
+        mvc.perform(get("/producto/1")).andExpect(redirectedUrl("/personalizar/1"));
+    }
+
+    @Test
+    @WithMockUser(username = "cliente@test.pe", roles = "ADMIN")
+    void administracionConMensajesYOpcionesDtoSeRenderiza() throws Exception {
+        mvc.perform(get("/administracion")).andExpect(status().isOk());
+        mvc.perform(get("/administracion/gestion")).andExpect(status().isOk())
+            .andExpect(content().string(containsString("Pizza Test")))
+            .andExpect(content().string(containsString("Hola")));
+    }
+
+    @Test
+    void clienteNoPuedeAdministrarYCheckoutExigeLoginYCsrf() throws Exception {
+        mvc.perform(get("/administracion")).andExpect(status().isForbidden());
+        mvc.perform(post("/checkout/confirmar").with(anonymous()).with(csrf()))
+            .andExpect(status().is3xxRedirection());
+        mvc.perform(post("/carrito/agregar").param("productoId", "1"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void checkoutPersisteImportesEntregaYDetalleYVaciaCarrito() throws Exception {
+        String token = compra.carrito(null, "cliente@test.pe");
+        compra.agregar(token, 1, List.of(2,3,4), 2);
+        mvc.perform(get("/pedido/resumen").cookie(new Cookie("DOKY_CART", token)))
+            .andExpect(status().isOk()).andExpect(content().string(containsString("Pizza Test")));
+        mvc.perform(post("/checkout/confirmar").with(csrf()).cookie(new Cookie("DOKY_CART", token))
+            .param("entrega", "DELIVERY").param("direccion", "Av. Prueba 123, Lima").param("pago", "EFECTIVO")
+            .param("total", "0.01")) // el cliente no decide los importes
+            .andExpect(status().is3xxRedirection());
+        Integer pedido = db.queryForObject("SELECT id FROM pedidos WHERE usuario_id=1", Integer.class);
+        assertEquals(0, new BigDecimal("101.00").compareTo(db.queryForObject("SELECT total FROM pedidos WHERE id=?", BigDecimal.class, pedido)));
+        assertEquals(8, db.queryForObject("SELECT stock FROM productos WHERE id=1", Integer.class));
+        assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM carrito_items", Integer.class));
+        assertEquals("DELIVERY", db.queryForObject("SELECT entrega FROM compra_snapshot WHERE pedido_id=?", String.class, pedido));
+        mvc.perform(get("/pedidos/" + pedido)).andExpect(status().isOk())
+            .andExpect(content().string(containsString("Av. Prueba 123, Lima")));
+        mvc.perform(get("/pedidos/" + pedido).with(user("otro@test.pe")))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void checkoutInvalidoNoCreaPedidoYConservaFormulario() throws Exception {
+        String token = compra.carrito(null, "cliente@test.pe");
+        compra.agregar(token, 1, List.of(1,3), 1);
+        mvc.perform(post("/checkout/confirmar").with(csrf()).cookie(new Cookie("DOKY_CART", token))
+            .param("entrega", "DELIVERY").param("direccion", "").param("pago", "EFECTIVO"))
+            .andExpect(status().isOk()).andExpect(model().attributeHasErrors("checkout"));
+        assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM pedidos", Integer.class));
+        assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM carrito_items", Integer.class));
+    }
+
+    @Test
+    void opcionesYStockSeValidanEnServidor() {
+        String token = compra.carrito(null, "cliente@test.pe");
+        assertThrows(IllegalArgumentException.class, () -> compra.agregar(token, 1, List.of(1), 1));
+        assertThrows(IllegalArgumentException.class, () -> compra.agregar(token, 1, List.of(1,3,5), 1));
+        assertThrows(IllegalArgumentException.class, () -> compra.agregar(token, 1, List.of(1,1,3), 1));
+        assertThrows(IllegalArgumentException.class, () -> compra.agregar(token, 1, List.of(1,3), 11));
+        compra.agregar(token, 1, List.of(1,3), 2);
+        compra.agregar(token, 1, List.of(1,3), 3);
+        assertEquals(1, compra.lineas(token).size());
+        assertEquals(5, compra.lineas(token).get(0).cantidad());
+        long id = compra.lineas(token).get(0).id();
+        assertThrows(IllegalArgumentException.class, () -> compra.cantidad(token, id, 11));
+        String otro = compra.carrito(null, "otro@test.pe");
+        compra.cantidad(otro, id, 0);
+        assertEquals(5, compra.lineas(token).get(0).cantidad());
+        assertThrows(IllegalArgumentException.class, () -> compra.confirmar(token, "otro@test.pe", new CheckoutForm()));
+    }
+
+    @Test
+    void retiroProductoNoBorraOpcionesNiHistorialYBloqueaCompra() {
+        String token = compra.carrito(null, "cliente@test.pe");
+        compra.agregar(token, 1, List.of(1,3), 1);
+        int pedido = compra.confirmar(token, "cliente@test.pe", new CheckoutForm());
+        assertTrue(productos.eliminar(1));
+        assertTrue(productos.buscarPorId(1).isPresent());
+        assertEquals(0, productos.buscarPorId(1).orElseThrow().getStock());
+        assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM detalles_pedido WHERE pedido_id=?", Integer.class, pedido));
+        assertThrows(IllegalArgumentException.class, () -> compra.agregar(token, 1, List.of(1,3), 1));
+    }
+
+    @Test
+    void loginNoPermiteApropiarseDeCarritoAjeno() {
+        String token = compra.carrito(null, "cliente@test.pe");
+        compra.agregar(token, 1, List.of(1,3), 1);
+        String otherToken = compra.carrito(token, "otro@test.pe");
+        assertNotEquals(token, otherToken);
+        assertTrue(compra.lineas(otherToken).isEmpty());
+        assertFalse(compra.lineas(token).isEmpty());
+    }
+
+    @Test
+    @WithMockUser(username = "cliente@test.pe", roles = "ADMIN")
+    void crudCategoriaConservaMetadatosYProtegeCategoriasConProductos() throws Exception {
+        mvc.perform(post("/administracion/gestion/categoria").with(csrf())
+            .param("id", "1").param("codigo", "clasicas").param("nombre", "Clásicas nuevas"))
+            .andExpect(status().is3xxRedirection());
+        var categoria = categoriaRepository.findById(1).orElseThrow();
+        assertEquals("Descripción original", categoria.getDescripcion());
+        mvc.perform(post("/administracion/gestion/categoria/1/eliminar").with(csrf()))
+            .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("error"));
+        assertTrue(categoriaRepository.existsById(1));
+        mvc.perform(post("/administracion/gestion/categoria").with(csrf())
+            .param("codigo", "postres").param("nombre", "Postres"))
+            .andExpect(status().is3xxRedirection());
+        int id = categoriaRepository.findByCodigoIgnoreCase("postres").orElseThrow().getId();
+        mvc.perform(post("/administracion/gestion/categoria/" + id + "/eliminar").with(csrf()))
+            .andExpect(status().is3xxRedirection());
+        assertFalse(categoriaRepository.existsById(id));
+    }
+
+    @Test
+    @WithMockUser(username = "cliente@test.pe", roles = "ADMIN")
+    void productoConCategoriaSinIdNoProvocaNullPointer() throws Exception {
+        mvc.perform(post("/administracion/productos/guardar").with(csrf())
+            .param("nombre", "Producto válido").param("precio", "10.00").param("stock", "1").param("categoria.id", ""))
+            .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("error"));
+    }
+    @Test
+    @WithMockUser(username = "cliente@test.pe", roles = "ADMIN")
+    void productoSeCreaEditaYValidaImportes() throws Exception {
+        mvc.perform(post("/administracion/productos/guardar").with(csrf())
+            .param("nombre", "Pizza Nueva").param("precio", "20.50").param("stock", "6").param("categoria.id", "1"))
+            .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("exito"));
+        int id = db.queryForObject("SELECT id FROM productos WHERE nombre='Pizza Nueva'", Integer.class);
+        mvc.perform(post("/administracion/productos/guardar").with(csrf())
+            .param("id", String.valueOf(id)).param("nombre", "Pizza Editada").param("precio", "25.75").param("stock", "7").param("categoria.id", "2"))
+            .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("exito"));
+        var producto = productos.buscarPorId(id).orElseThrow();
+        assertEquals("Pizza Editada", producto.getNombre());
+        assertEquals(0, new BigDecimal("25.75").compareTo(producto.getPrecio()));
+        assertEquals(2, producto.getCategoria().getId());
+        mvc.perform(post("/administracion/productos/guardar").with(csrf())
+            .param("nombre", "Precio inválido").param("precio", "1.001").param("stock", "1").param("categoria.id", "1"))
+            .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("error"));
+    }
+
+    @Test
+    void cascadasPublicasFiltranPorCategoriaProductoYEstado() throws Exception {
+        db.update("INSERT INTO categorias(id,codigo,nombre) VALUES(3,'vacia','Sin productos')");
+        db.update("INSERT INTO productos(id,nombre,precio,stock,categoria_id) VALUES(3,'Pizza agotada',20,0,1)");
+        db.update("INSERT INTO opciones(id,producto_id,grupo,nombre,precio,activo) VALUES(6,2,'EXTRA','Salsa',1,true)");
+        mvc.perform(get("/api/catalogo/categorias/1/productos").with(anonymous()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].id").value(1)).andExpect(jsonPath("$[0].nombre").value("Pizza Test"))
+            .andExpect(jsonPath("$[0].precio").value(32.0)).andExpect(jsonPath("$[0].password").doesNotExist());
+        mvc.perform(get("/api/catalogo/categorias/2/productos").with(anonymous()))
+            .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].id").value(2));
+        mvc.perform(get("/api/catalogo/categorias/3/productos").with(anonymous()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/catalogo/categorias/1/productos/1/opciones").with(anonymous()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(4))
+            .andExpect(jsonPath("$[*].activo").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(true))))
+            .andExpect(jsonPath("$[*].productoId").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(1))));
+        mvc.perform(get("/api/catalogo/categorias/2/productos/2/opciones").with(anonymous()))
+            .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].nombre").value("Salsa"));
+    }
+
+    @Test
+    void cascadasRechazanPadresInexistentesYCombinacionesManipuladas() throws Exception {
+        mvc.perform(get("/api/catalogo/categorias/999/productos")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/catalogo/categorias/2/productos/1/opciones")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/catalogo/categorias/1/productos/999/opciones")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/catalogo/categorias/no-numerico/productos")).andExpect(status().isBadRequest());
+        db.update("UPDATE productos SET stock=0 WHERE id=1");
+        mvc.perform(get("/api/catalogo/categorias/1/productos/1/opciones")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "cliente@test.pe", roles = "ADMIN")
+    void cascadaAdministrativaIncluyeAgotadosYOpcionesInactivas() throws Exception {
+        db.update("UPDATE productos SET stock=0 WHERE id=1");
+        mvc.perform(get("/administracion/consultas/categorias/1/productos"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].stock").value(0));
+        mvc.perform(get("/administracion/consultas/categorias/1/productos/1/opciones"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(5))
+            .andExpect(jsonPath("$[?(@.activo == false)].nombre").value(org.hamcrest.Matchers.contains("Inactiva")));
+        mvc.perform(get("/administracion/consultas/categorias/2/productos/1/opciones"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void soloAdministradorPuedeConsultarOpcionesInactivas() throws Exception {
+        for (String path : List.of("/administracion/consultas/categorias/1/productos", "/administracion/consultas/categorias/1/productos/1/opciones")) {
+            mvc.perform(get(path)).andExpect(status().isForbidden());
+            mvc.perform(get(path).with(anonymous())).andExpect(status().is3xxRedirection());
+        }
+        mvc.perform(get("/api/catalogo/categorias/1/productos/1/opciones").param("incluirInactivas", "true"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(4));
+    }
+
+    @Test
+    void paginasIncluyenDesplegablesDependientes() throws Exception {
+        mvc.perform(get("/categorias")).andExpect(status().isOk())
+            .andExpect(content().string(containsString("id=\"consultaCategoria\"")))
+            .andExpect(content().string(containsString("id=\"consultaProducto\"")))
+            .andExpect(content().string(containsString("id=\"consultaOpcion\"")))
+            .andExpect(content().string(containsString("data-base=\"/api/catalogo\"")))
+            .andExpect(content().string(containsString("/js/consulta-cascada.js")));
+        mvc.perform(get("/administracion/gestion").with(user("cliente@test.pe").roles("ADMIN")))
+            .andExpect(status().isOk()).andExpect(content().string(containsString("data-base=\"/administracion/consultas\"")))
+            .andExpect(content().string(containsString("data-option-row")))
+            .andExpect(content().string(containsString("data-editar")));
+    }
+
+    @Test
+    void contactoGuardaConJpaYConservaRedireccion() throws Exception {
+        int antes = db.queryForObject("SELECT COUNT(*) FROM mensajes", Integer.class);
+        mvc.perform(post("/contacto").with(csrf()).param("nombre", "Ana Test")
+            .param("email", "ana@test.pe").param("telefono", "999999999")
+            .param("asunto", "Consulta").param("mensaje", "Mensaje de prueba"))
+            .andExpect(redirectedUrl("/contacto")).andExpect(flash().attributeExists("exito"));
+        assertEquals(antes + 1, db.queryForObject("SELECT COUNT(*) FROM mensajes", Integer.class));
+        mvc.perform(post("/contacto").with(csrf()).param("nombre", "")
+            .param("email", "mal").param("telefono", "").param("asunto", "Consulta").param("mensaje", ""))
+            .andExpect(redirectedUrl("/contacto")).andExpect(flash().attributeExists("error"));
+        assertEquals(antes + 1, db.queryForObject("SELECT COUNT(*) FROM mensajes", Integer.class));
+    }
+
+    @Test
+    @WithMockUser(username = "cliente@test.pe", roles = "ADMIN")
+    void opcionSeRegistraEditaYConsultaConJpa() throws Exception {
+        mvc.perform(post("/administracion/gestion/opcion").with(csrf()).param("productoId", "2")
+            .param("grupo", "EXTRA").param("nombre", "Salsa nueva").param("precio", "1.50").param("activo", "true"))
+            .andExpect(redirectedUrl("/administracion/gestion"));
+        int id = db.queryForObject("SELECT id FROM opciones WHERE nombre='Salsa nueva'", Integer.class);
+        mvc.perform(post("/administracion/gestion/opcion").with(csrf()).param("id", String.valueOf(id))
+            .param("productoId", "2").param("grupo", "EXTRA").param("nombre", "Salsa editada").param("precio", "2.50"))
+            .andExpect(redirectedUrl("/administracion/gestion"));
+        mvc.perform(get("/administracion/consultas/categorias/2/productos/2/opciones"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].nombre").value("Salsa editada"))
+            .andExpect(jsonPath("$[0].activo").value(false));
+        mvc.perform(get("/api/catalogo/categorias/2/productos/2/opciones"))
+            .andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(post("/administracion/gestion/opcion").with(csrf()).param("productoId", "999")
+            .param("grupo", "EXTRA").param("nombre", "No existe").param("precio", "1.00"))
+            .andExpect(redirectedUrl("/administracion/gestion")).andExpect(flash().attributeExists("error"));
+    }
+
+    @Test
+    void opcionesFaltantesSeCompletanSinDuplicarNiCambiarPrecios() throws Exception {
+        db.update("DELETE FROM opciones");
+        personalizacion.completarFaltantes();
+        int count = db.queryForObject("SELECT COUNT(*) FROM opciones", Integer.class);
+        personalizacion.completarFaltantes();
+        assertEquals(count, db.queryForObject("SELECT COUNT(*) FROM opciones", Integer.class));
+        var html = mvc.perform(get("/personalizar/1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(html.contains("Salsa BBQ")); assertTrue(html.contains("Borde relleno de queso"));
+        assertTrue(html.contains("name=\"TAMANO\"")); assertTrue(html.contains("name=\"MASA\""));
+        assertTrue(html.contains("name=\"SALSA\"")); assertTrue(html.contains("checked"));
+        java.nio.file.Files.writeString(java.nio.file.Path.of("target/pizza-render.html"), html);
+        var secciones = personalizacion.secciones(productos.buscarPorId(1).orElseThrow(), compra.opciones(1));
+        var selected = secciones.stream().filter(g -> !g.multiple()).map(g -> String.valueOf(g.opciones().get(0).getId())).toArray(String[]::new);
+        mvc.perform(post("/carrito/agregar").with(csrf()).param("productoId", "1").param("cantidad", "1").param("opciones", selected))
+            .andExpect(redirectedUrl("/carrito"));
+        mvc.perform(get("/pedido/resumen")).andExpect(status().isOk()).andExpect(content().string(containsString("Salsa de tomate")));
+    }
+
+    @Test
+    void completarRespetaConfiguracionYDesactivacionExistentes() {
+        personalizacion.completarFaltantes();
+        assertEquals(0, new BigDecimal("12.00").compareTo(db.queryForObject("SELECT precio FROM opciones WHERE id=2", BigDecimal.class)));
+        assertFalse(db.queryForObject("SELECT activo FROM opciones WHERE id=5", Boolean.class));
+        assertEquals(2, db.queryForObject("SELECT COUNT(*) FROM opciones WHERE producto_id=1 AND grupo='TAMANO'", Integer.class));
+    }
+
+    @Test
+    void bebidaNoMuestraNiAceptaMasaOSalsaBbq() throws Exception {
+        db.update("INSERT INTO categorias(id,codigo,nombre) VALUES(3,'bebidas','Bebidas')");
+        db.update("INSERT INTO productos(id,nombre,precio,stock,categoria_id,imagen_url) VALUES(3,'Gaseosa Personal',5,10,3,'/images/logo.png')");
+        personalizacion.completarFaltantes();
+        db.update("INSERT INTO opciones(producto_id,grupo,nombre,precio,activo) VALUES(3,'MASA','Masa tradicional',0,true),(3,'EXTRA','Salsa BBQ',1,true)");
+        var response = mvc.perform(get("/personalizar/3")).andExpect(status().isOk())
+            .andExpect(content().string(containsString("Personaliza tu bebida")))
+            .andExpect(content().string(containsString("Bien fría")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Salsa BBQ"))))
+            .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Recién horneada")))).andReturn();
+        java.nio.file.Files.writeString(java.nio.file.Path.of("target/bebida-render.html"), response.getResponse().getContentAsString());
+        int bbq = db.queryForObject("SELECT id FROM opciones WHERE producto_id=3 AND nombre='Salsa BBQ'", Integer.class);
+        String cart = compra.carrito(null, "cliente@test.pe");
+        assertThrows(IllegalArgumentException.class, () -> compra.agregar(cart, 3, List.of(bbq), 1));
+        mvc.perform(get("/api/catalogo/categorias/3/productos/3/opciones"))
+            .andExpect(content().string(org.hamcrest.Matchers.not(containsString("BBQ"))));
+    }
+
+    @Test
+    void erroresDeCompraVuelvenALaPersonalizacionYBusquedaFiltra() throws Exception {
+        mvc.perform(post("/carrito/agregar").with(csrf()).param("productoId", "1").param("cantidad", "1"))
+            .andExpect(redirectedUrl("/personalizar/1")).andExpect(flash().attributeExists("error"));
+        mvc.perform(get("/categorias").param("buscar", "Pan al ajo"))
+            .andExpect(status().isOk()).andExpect(content().string(containsString("Pan al ajo")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Pizza Test"))));
+        mvc.perform(get("/personalizar/999")).andExpect(redirectedUrl("/categorias"));
+    }
+
+    @Test
+    @WithMockUser(username = "cliente@test.pe", roles = "ADMIN")
+    void paginasMantienenRecursosLocalesYDestinosDeModales() throws Exception {
+        for (String ruta : List.of("/", "/categorias", "/personalizar/1", "/pedido/resumen", "/pedido/entrega", "/contacto", "/registro", "/login", "/forgotpassword", "/cuenta", "/administracion", "/administracion/gestion")) {
+            String html = mvc.perform(get(ruta)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            var targets = java.util.regex.Pattern.compile("data-bs-target=\"#([^\"]+)\"").matcher(html);
+            while (targets.find()) assertTrue(html.contains("id=\"" + targets.group(1) + "\""), ruta + " -> " + targets.group(1));
+            var recursos = java.util.regex.Pattern.compile("(?:src|href)=\"(/(?:js|style)/[^\"]+)\"").matcher(html);
+            while (recursos.find()) mvc.perform(get(recursos.group(1))).andExpect(status().isOk());
+        }
+    }
+
+}

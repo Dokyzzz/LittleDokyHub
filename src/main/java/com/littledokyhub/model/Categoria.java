@@ -14,6 +14,7 @@ public class Categoria {
 
     @NotBlank(message = "El código es obligatorio")
     @Size(min = 2, max = 20, message = "El código debe tener entre 2 y 20 caracteres")
+    @jakarta.validation.constraints.Pattern(regexp = "[a-z0-9-]+", message = "El código admite minúsculas, números y guiones")
     @Column(nullable = false, unique = true, length = 20)
     private String codigo;
 

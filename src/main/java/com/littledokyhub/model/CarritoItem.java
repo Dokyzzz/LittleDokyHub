@@ -3,7 +3,7 @@ package com.littledokyhub.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "carrito_items")
+@Table(name = "carrito_items", uniqueConstraints = @UniqueConstraint(columnNames = {"carrito_id", "producto_id", "configuracion"}))
 public class CarritoItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

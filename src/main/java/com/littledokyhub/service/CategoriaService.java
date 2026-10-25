@@ -34,6 +34,13 @@ public class CategoriaService {
     }
 
     public Categoria guardar(Categoria categoria) {
+        if (categoria.getId() != null) {
+            Categoria existente = categoriaRepository.findById(categoria.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Categoría inexistente"));
+            existente.setCodigo(categoria.getCodigo());
+            existente.setNombre(categoria.getNombre());
+            return categoriaRepository.save(existente);
+        }
         return categoriaRepository.save(categoria);
     }
 

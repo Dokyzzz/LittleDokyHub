@@ -10,17 +10,17 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title fw-bold" id="modalPromoLabel">Combo Doky Pareja</h5>
+                    <h5 class="modal-title fw-bold" id="modalPromoLabel">Para compartir</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body text-center py-4">
                     <img th:src="@{/images/promo_del_dia.jpg}" alt="Promo del día" class="img-fluid mb-3">
-                    <h4 class="fw-bold text-danger">1 Pizza Familiar + 2 Bebidas + Pan al Ajo</h4>
-                    <p class="text-muted">Aprovecha hoy por solo <strong>S/ 49.90</strong></p>
+                    <h4 class="fw-bold text-danger">Combina pizza, bebidas y pan al ajo</h4>
+                    <p class="text-muted">Elige tus productos y revisa el total antes de confirmar.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="button" class="btn btn-main btn-agregar-promo">Ordenar Oferta</button>
+                    <a th:href="@{/categorias}" class="btn btn-main">Elegir productos</a>
                 </div>
             </div>
         </div>
@@ -35,7 +35,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
 
-                <div class="modal-body d-flex flex-column">
+                <div class="modal-body d-flex flex-column" th:attr="data-cart-url=@{/carrito/datos}">
                     <div class="flex-grow-1 overflow-auto" id="cartItemsContainer" aria-live="polite"></div>
 
                     <div class="p-3">

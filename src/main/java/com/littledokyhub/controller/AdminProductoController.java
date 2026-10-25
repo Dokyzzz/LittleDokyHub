@@ -25,6 +25,9 @@ public class AdminProductoController {
     private ProductoService productoService;
 
     @Autowired
+    private com.littledokyhub.service.PersonalizacionService personalizacion;
+
+    @Autowired
     private CategoriaService categoriaService;
 
     @Autowired
@@ -45,7 +48,8 @@ public class AdminProductoController {
             return "redirect:/administracion#productos";
         }
 
-        if (categoriaService.listar().stream().noneMatch(c -> c.getId().equals(producto.getCategoria().getId()))) {
+        if (producto.getCategoria() == null || producto.getCategoria().getId() == null
+                || categoriaService.listar().stream().noneMatch(c -> c.getId().equals(producto.getCategoria().getId()))) {
             flash.addFlashAttribute("error", "Categoría inválida");
             return "redirect:/administracion";
         }
@@ -72,6 +76,7 @@ public class AdminProductoController {
         
         // El servicio procesa el guardado mediante JPA
         if (productoService.guardar(producto)) {
+            personalizacion.completarProducto(producto.getId());
             flash.addFlashAttribute("exito",
                     esNuevo ? "Producto creado correctamente." : "Producto actualizado correctamente.");
         } else {

@@ -1,8 +1,15 @@
 (() => {
-    const money = n => `S/ ${Number(n).toFixed(2)}`; let cart = []; try { cart = JSON.parse(localStorage.getItem('dokyOrder') || '[]') } catch (_) { cart = [] }
-    const subtotal = cart.reduce((s, p) => s + Number(p.unitPrice ?? p.basePrice ?? 0) * Number(p.quantity || 1), 0);
-    const delivery = () => document.querySelector('input[name="delivery"]:checked')?.value || 'delivery';
-    function update() { const pickup = delivery() === 'pickup'; document.getElementById('addressFields').classList.toggle('d-none', pickup); document.getElementById('address').required = !pickup; const ship = pickup ? 0 : 5; document.getElementById('productsTotal').textContent = money(subtotal); document.getElementById('shippingCost').textContent = money(ship); document.getElementById('finalTotal').textContent = money(subtotal + ship) }
-    document.querySelectorAll('input[name="delivery"]').forEach(el => el.addEventListener('change', update));
-    document.getElementById('checkoutForm').addEventListener('submit', e => { e.preventDefault(); const selection = { delivery: delivery(), address: document.getElementById('address').value.trim(), reference: document.getElementById('reference').value.trim(), payment: document.querySelector('input[name="payment"]:checked').value, subtotal, shipping: delivery() === 'pickup' ? 0 : 5, total: subtotal + (delivery() === 'pickup' ? 0 : 5) }; localStorage.setItem('dokyCheckout', JSON.stringify(selection)); const msg = document.getElementById('checkoutMessage'); msg.textContent = `Selección guardada. Entrega: ${selection.delivery === 'pickup' ? 'Recojo en tienda' : 'Delivery'} · Pago: ${selection.payment} · Total: ${money(selection.total)}. No se realizó ningún cobro.`; msg.classList.remove('d-none') }); update();
+    const form = document.getElementById('checkoutForm');
+    const entrega = document.getElementById('entrega');
+    const direccion = document.getElementById('direccion');
+    function update() {
+        const delivery = entrega.value === 'DELIVERY', shipping = delivery ? 5 : 0;
+        document.getElementById('addressFields').hidden = !delivery;
+        direccion.required = delivery;
+        direccion.minLength = delivery ? 5 : 0;
+        document.getElementById('shippingCost').textContent = `S/ ${shipping.toFixed(2)}`;
+        document.getElementById('finalTotal').textContent = `S/ ${(Number(form.dataset.subtotal) + shipping).toFixed(2)}`;
+    }
+    entrega.addEventListener('change', update);
+    update();
 })();

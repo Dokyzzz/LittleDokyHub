@@ -20,7 +20,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class PageController {
 
     @Autowired
+    private com.littledokyhub.service.CompraService compraService;
+
+    @Autowired
     private ProductoService productoService;
+
+    @Autowired
+    private com.littledokyhub.service.PersonalizacionService personalizacion;
 
     @Autowired
     private CategoriaService categoriaService;
@@ -38,8 +44,10 @@ public class PageController {
     }
 
     @GetMapping("/categorias")
-    public String categorias(Model model) {
+    public String categorias(@org.springframework.web.bind.annotation.RequestParam(defaultValue = "") String buscar, Model model) {
         model.addAttribute("categorias", categoriaService.listar());
+        model.addAttribute("productos", productoService.buscar(buscar));
+        model.addAttribute("buscar", buscar);
         model.addAttribute("clasicas", productoService.obtenerClasicas());
         model.addAttribute("especiales", productoService.obtenerEspeciales());
         model.addAttribute("bebidas", productoService.obtenerBebidas());
@@ -51,7 +59,7 @@ public class PageController {
         return "shop/detalles";
     }
 
-    @GetMapping("/personalizar/{id}")
+    @GetMapping({"/personalizar/{id}", "/personalizar-bebida/{id}"})
     public String personalizar(@org.springframework.web.bind.annotation.PathVariable Integer id, Model model,
             org.springframework.web.servlet.mvc.support.RedirectAttributes flash) {
         var producto = productoService.buscarPorId(id);
@@ -60,17 +68,10 @@ public class PageController {
             return "redirect:/categorias";
         }
         model.addAttribute("producto", producto.get());
-        return "shop/personalizar";
-    }
-
-    @GetMapping("/pedido/resumen")
-    public String resumenPedido() {
-        return "shop/resumen-pedido";
-    }
-
-    @GetMapping("/pedido/entrega")
-    public String entregaPedido() {
-        return "shop/entrega-pedido";
+        var opciones = compraService.opciones(id);
+        model.addAttribute("secciones", personalizacion.secciones(producto.get(), opciones));
+        model.addAttribute("tipoProducto", personalizacion.tipo(producto.get()));
+        return personalizacion.tipo(producto.get()).equals("bebida") ? "shop/personalizar-bebida" : "shop/personalizar";
     }
 
     @GetMapping("/contacto")
@@ -118,7 +119,13 @@ public class PageController {
         }
         nuevo.setRol(rolCliente);
 
-        boolean guardado = usuarioService.guardar(nuevo);
+        boolean guardado;
+        try {
+            guardado = usuarioService.guardar(nuevo);
+        } catch (org.springframework.dao.DataIntegrityViolationException exception) {
+            errors.rejectValue("email", "duplicate", "El correo electrónico ya se encuentra registrado.");
+            return "account/create";
+        }
 
         if (!guardado) {
             errors.rejectValue("email", "duplicate", "El correo electrónico ya se encuentra registrado.");
@@ -131,17 +138,17 @@ public class PageController {
 
     @GetMapping("/forgotpassword")
     public String forgotPassword() {
-        return "account/forgotpassword";
+        return "account/recovery-unavailable";
     }
 
     @GetMapping("/verifycode")
     public String verifyCode() {
-        return "account/verifycode";
+        return "account/recovery-unavailable";
     }
 
     @GetMapping("/resetpassword")
     public String resetPassword() {
-        return "account/resetpassword";
+        return "account/recovery-unavailable";
     }
 
     @GetMapping("/administracion")

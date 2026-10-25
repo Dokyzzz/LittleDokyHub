@@ -1,26 +1,81 @@
--- USE bd_littledokyhub
-CREATE DATABASE bd_littledokyhub;
+-- MySQL 8+. Ejecutar antes de iniciar Spring Boot en una base vacía.
+-- No elimina ni sustituye datos existentes. Las cuentas demo son solo para desarrollo.
+CREATE DATABASE IF NOT EXISTS bd_littledokyhub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE bd_littledokyhub;
+CREATE TABLE IF NOT EXISTS roles (
+ id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(30) NOT NULL UNIQUE
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS usuarios (
+ id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(100) NOT NULL, email VARCHAR(100) NOT NULL UNIQUE,
+ password VARCHAR(255) NOT NULL, telefono VARCHAR(15), activo BOOLEAN NOT NULL DEFAULT TRUE,
+ rol_id INT NOT NULL, FOREIGN KEY (rol_id) REFERENCES roles(id)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS categorias (
+ id INT AUTO_INCREMENT PRIMARY KEY, codigo VARCHAR(20) NOT NULL UNIQUE, nombre VARCHAR(50) NOT NULL,
+ descripcion TEXT, icono VARCHAR(50)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS productos (
+ id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(100) NOT NULL UNIQUE, descripcion TEXT,
+ precio DECIMAL(10,2) NOT NULL, stock INT NOT NULL DEFAULT 0, imagen_url VARCHAR(255), categoria_id INT NOT NULL,
+ FOREIGN KEY (categoria_id) REFERENCES categorias(id), CHECK (precio > 0), CHECK (stock >= 0)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS opciones (
+ id INT AUTO_INCREMENT PRIMARY KEY, producto_id INT NOT NULL, grupo VARCHAR(20) NOT NULL,
+ nombre VARCHAR(100) NOT NULL, precio DECIMAL(10,2) NOT NULL DEFAULT 0, activo BOOLEAN NOT NULL DEFAULT TRUE,
+ FOREIGN KEY (producto_id) REFERENCES productos(id), CHECK (precio >= 0), CHECK (grupo IN ('TAMANO','MASA','EXTRA'))
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS pedidos (
+ id INT AUTO_INCREMENT PRIMARY KEY, fecha DATETIME(6) NOT NULL, total DECIMAL(10,2) NOT NULL,
+ estado VARCHAR(30) NOT NULL, usuario_id INT NOT NULL,
+ FOREIGN KEY (usuario_id) REFERENCES usuarios(id), CHECK (total >= 0)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS detalles_pedido (
+ id INT AUTO_INCREMENT PRIMARY KEY, cantidad INT NOT NULL, precio_unitario DECIMAL(10,2) NOT NULL,
+ subtotal DECIMAL(10,2) NOT NULL, pedido_id INT NOT NULL, producto_id INT NOT NULL,
+ FOREIGN KEY (pedido_id) REFERENCES pedidos(id), FOREIGN KEY (producto_id) REFERENCES productos(id),
+ CHECK (cantidad > 0), CHECK (precio_unitario > 0), CHECK (subtotal > 0)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS carritos (
+ id VARCHAR(36) PRIMARY KEY, usuario_id INT UNIQUE, FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS carrito_items (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, carrito_id VARCHAR(36) NOT NULL, producto_id INT NOT NULL,
+ configuracion VARCHAR(500) NOT NULL, cantidad INT NOT NULL,
+ FOREIGN KEY (carrito_id) REFERENCES carritos(id), FOREIGN KEY (producto_id) REFERENCES productos(id),
+ UNIQUE KEY uq_carrito_config (carrito_id,producto_id,configuracion), CHECK (cantidad BETWEEN 1 AND 99)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS compra_snapshot (
+ pedido_id INT PRIMARY KEY, entrega VARCHAR(30) NOT NULL, direccion VARCHAR(255) NOT NULL, pago VARCHAR(30) NOT NULL,
+ FOREIGN KEY (pedido_id) REFERENCES pedidos(id)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS detalle_snapshot (
+ detalle_id INT PRIMARY KEY, nombre VARCHAR(100) NOT NULL, personalizacion TEXT NOT NULL,
+ FOREIGN KEY (detalle_id) REFERENCES detalles_pedido(id)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS mensajes (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(100) NOT NULL, email VARCHAR(100) NOT NULL, telefono VARCHAR(15),
+ asunto VARCHAR(100) NOT NULL, mensaje TEXT NOT NULL, fecha DATETIME(6) NOT NULL
+) ENGINE=InnoDB;
 
 -- Roles
-INSERT INTO roles (id, nombre) VALUES
+INSERT IGNORE INTO roles (id, nombre) VALUES
 (1, 'CLIENTE'),
 (2, 'ADMIN');
 
 -- Usuarios
-INSERT INTO usuarios (id, activo, email, nombre, password, rol_id) VALUES
-(1, 1, 'cliente.demo@littledokyhub.test', 'Cliente Demo', 'ClienteDemo2026!', 1),
-(2, 1, 'admin.demo@littledokyhub.test', 'Admin Demo', 'AdminDemo2026!', 2);
+INSERT IGNORE INTO usuarios (id, activo, email, nombre, password, rol_id) VALUES
+(1, 1, 'cliente.demo@littledokyhub.test', 'Cliente Demo', '$2b$12$oF9vHxPL3vRMI6X9YPmgqutsdket93Vjam3JeNKlbyMkeWhQy4CAS', 1),
+(2, 1, 'admin.demo@littledokyhub.test', 'Admin Demo', '$2b$12$zVXT39WHoozenzs4P.JR9uaRIiAYFAA.z5jmESewvjAP0SaX2xHF6', 2);
 
 -- Categorías
-INSERT INTO categorias (id, codigo, nombre) VALUES
+INSERT IGNORE INTO categorias (id, codigo, nombre) VALUES
 (1, 'clasicas', 'Pizzas Clásicas'),
 (2, 'especiales', 'Pizzas Especiales'),
 (3, 'bebidas', 'Bebidas'),
 (4, 'entradas', 'Entradas y Piques');
 
 -- Productos 
-INSERT INTO productos (id, nombre, descripcion, precio, stock, imagen_url, categoria_id) VALUES
+INSERT IGNORE INTO productos (id, nombre, descripcion, precio, stock, imagen_url, categoria_id) VALUES
 -- Clásicas
 (1, 'Pizza Americana', 'Tradicional pizza con salsa de tomate casera, queso mozzarella fundido y jamón seleccionado.', 32.00, 50, '/images/americana.jpg', 1),
 (2, 'Pizza Pepperoni', 'La clásica favorita con abundante queso mozzarella y rodajas de pepperoni crocante.', 36.00, 45, '/images/pepperoni.jpg', 1),
@@ -43,7 +98,7 @@ INSERT INTO productos (id, nombre, descripcion, precio, stock, imagen_url, categ
 (13, 'Pan al Ajo Clásico', 'Porción de 6 panes artesanales horneados con mantequilla aromatizada al ajo y hierbas.', 10.00, 40, '/images/pan_ajo.jpg', 4),
 (14, 'Pan al Ajo Especial', 'Nuestros panes crujientes al ajo cubiertos con una capa de queso mozzarella gratinado.', 14.00, 40, '/images/pan_ajo_especial.jpg', 4);
 
-INSERT INTO opciones (id, producto_id, grupo, nombre, precio, activo) VALUES
+INSERT IGNORE INTO opciones (id, producto_id, grupo, nombre, precio, activo) VALUES
 (1, 1, 'TAMANO', 'Mediana', 0.00, 1),
 (2, 1, 'TAMANO', 'Familiar', 12.00, 1),
 (3, 1, 'MASA', 'Clásica', 0.00, 1),
