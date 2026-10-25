@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Little Doky's Hub - Contacto</title>
+    <link rel="shortcut icon" th:href="@{/favicon.ico}" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/style/styles.css}">
+</head>
+
+<body>
+    <div th:replace="~{fragments/header :: header('contacto')}"></div>
+
+    <main>
+        <section class="py-5">
+            <div class="container">
+                <div class="text-center mb-5">
+                    <h1 class="fw-bold">Contáctanos</h1>
+                    <p class="text-muted">¿Tienes alguna consulta, sugerencia o comentario? Escríbenos.</p>
+                </div>
+                <div class="row g-4 justify-content-center">
+                    <div class="col-lg-4">
+                        <div class="card h-100 border-0 shadow-sm p-4">
+                            <h4 class="fw-bold mb-4">Estamos para ayudarte</h4>
+                            <div class="d-flex gap-3 mb-4"><i class="bi bi-geo-alt-fill fs-4 text-danger"></i>
+                                <div><strong>Dirección</strong>
+                                    <p class="text-muted mb-0">Av. Principal 123, Lima</p>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-3 mb-4"><i class="bi bi-telephone-fill fs-4 text-danger"></i>
+                                <div><strong>Teléfono</strong>
+                                    <p class="text-muted mb-0">+51 999 999 999</p>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-3"><i class="bi bi-envelope-fill fs-4 text-danger"></i>
+                                <div><strong>Correo</strong>
+                                    <p class="text-muted mb-0">contacto@littledokyhub.com</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-7">
+                        <div class="card border-0 shadow-sm p-4 p-md-5">
+                            <p th:if="${error}" th:text="${error}" role="alert"></p><p th:if="${exito}" th:text="${exito}" role="status"></p><form id="contactForm" th:action="@{/contacto}" method="post">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="nombre" class="form-label fw-semibold">Nombre completo</label>
+                                        <input id="nombre" name="nombre" type="text" class="form-control" required></div>
+                                    <div class="col-md-6">
+                                        <label for="email" class="form-label fw-semibold">Correo electrónico</label>
+                                        <input id="email" name="email" type="email" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="telefono" class="form-label fw-semibold">Teléfono</label>
+                                        <input id="telefono" name="telefono" type="tel" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="asunto" class="form-label fw-semibold">Asunto</label>
+                                        <select id="asunto" name="asunto" class="form-select" required>
+                                            <option value="">Selecciona una opción</option>
+                                            <option>Consulta</option>
+                                            <option>Pedido</option>
+                                            <option>Reclamo</option>
+                                            <option>Sugerencia</option>
+                                            <option>Otro</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="mensaje" class="form-label fw-semibold">Mensaje</label>
+                                        <textarea id="mensaje" name="mensaje" class="form-control" rows="6" 
+                                            placeholder="Escribe tu mensaje..." required></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-main px-4">
+                                            <i class="bi bi-send me-2"></i>Enviar mensaje
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            <div id="contactSuccess" class="alert alert-success mt-4 d-none" role="alert">
+                                <i class="bi bi-check-circle me-2"></i>Tu mensaje fue registrado correctamente.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ── Modal Carrito ── -->
+    <div th:replace="~{fragments/modals :: modalCarrito}"></div>
+
+    <footer th:replace="~{fragments/footer :: footer}"></footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/main.js}"></script>
+    
+</body>
+
+</html>

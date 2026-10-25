@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Administración de productos | Little Doky's Hub</title>
+    <link rel="shortcut icon" th:href="@{/favicon.ico}" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/style/styles.css}">
+</head>
+
+<body class="d-flex flex-column min-vh-100 admin-page">
+    <div th:replace="~{fragments/admin-header :: adminHeader('products')}"></div>
+    <main class="container-fluid admin-container flex-grow-1">
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+            <div>
+                <p class="admin-eyebrow mb-1">GESTIÓN DEL CATÁLOGO</p>
+                <h1 class="display-6 fw-bold mb-1">Productos</h1>
+                <p class="text-secondary mb-0">Administra los productos disponibles en la tienda.</p>
+            </div>
+            <button class="btn btn-main" type="button" data-bs-toggle="modal" data-bs-target="#crearProducto">
+                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo producto
+            </button>
+        </div>
+        <div role="alert" class="alert alert-danger" th:if="${error}" th:text="${error}"></div>
+        <div role="status" class="alert alert-success" th:if="${exito}" th:text="${exito}"></div>
+        <div class="admin-panel">
+            <div class="admin-panel-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <h2 class="h5 fw-bold mb-0">Listado de productos</h2>
+                <label class="visually-hidden" for="buscarProducto">Buscar producto</label>
+                <input id="buscarProducto" class="form-control admin-search"
+                    placeholder="Buscar producto o categoría" type="search">
+            </div>
+            <div class="table-responsive">
+                <table class="table admin-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Imagen</th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Precio</th>
+                            <th>Stock</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="p : ${productos}" data-product-row>
+                            <td>
+                                <img class="product-thumb" th:if="${p.imagenUrl != null and !#strings.isEmpty(p.imagenUrl)}"
+                                    th:src="@{${p.imagenUrl}}" th:alt="${'Imagen de ' + p.nombre}">
+                                <span class="product-thumb-placeholder" th:unless="${p.imagenUrl != null and !#strings.isEmpty(p.imagenUrl)}">
+                                    <i class="bi bi-image" aria-hidden="true"></i>
+                                </span>
+                            </td>
+                            <td><strong th:text="${p.nombre}"></strong><small class="d-block text-secondary"
+                                    th:text="${p.descripcion}"></small></td>
+                            <td th:text="${p.categoria.nombre}"></td>
+                            <td class="text-nowrap" th:text="${'S/ ' + #numbers.formatDecimal(p.precio,1,2)}"></td>
+                            <td th:text="${p.stock}"></td>
+                            <td><span class="badge rounded-pill"
+                                    th:classappend="${p.stock > 0 ? 'text-bg-success' : 'text-bg-secondary'}"
+                                    th:text="${p.stock > 0 ? 'Disponible' : 'Inactivo'}"></span></td>
+                            <td class="text-end admin-actions">
+                                <div class="d-inline-flex gap-2">
+                                    <button class="btn btn-outline-secondary btn-sm" type="button"
+                                        data-bs-toggle="modal" th:attr="data-bs-target=${'#editar'+p.id}">Editar</button>
+                                    <button class="btn btn-outline-danger btn-sm" type="button"
+                                        data-bs-toggle="modal" th:attr="data-bs-target=${'#retirar'+p.id}"
+                                        th:disabled="${p.stock == 0}">Desactivar</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-center text-secondary p-5" th:if="${#lists.isEmpty(productos)}">Tu catálogo está vacío. Crea
+                tu primer producto para comenzar.</p>
+            <p id="sinResultados" class="text-center p-4 d-none">No encontramos productos con esa búsqueda.</p>
+            <div class="px-3 py-2 small text-secondary border-top">Desactivar oculta el producto y conserva el historial de pedidos.</div>
+        </div>
+        <div class="modal fade admin-modal" id="crearProducto" tabindex="-1" aria-label="Crear producto">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title fs-5">Nuevo producto</h2><button class="btn-close"
+                            data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <form th:action="@{/administracion/productos/guardar}" method="post" enctype="multipart/form-data">
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label" for="nuevoNombre">Nombre</label>
+                                    <input id="nuevoNombre" name="nombre" class="form-control form-control-custom"
+                                        required minlength="3" maxlength="100" placeholder="Ej. Pizza americana">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="nuevaDescripcion">Descripción</label>
+                                    <textarea id="nuevaDescripcion" class="form-control form-control-custom"
+                                        name="descripcion" rows="3"></textarea>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="nuevoPrecio">Precio (S/)</label>
+                                    <input id="nuevoPrecio" class="form-control form-control-custom" name="precio"
+                                        type="number" min="0.01" step="0.01" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="nuevoStock">Stock</label>
+                                    <input id="nuevoStock" class="form-control form-control-custom" name="stock"
+                                        type="number" min="0" value="0" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="nuevaCategoria">Categoría</label>
+                                    <select id="nuevaCategoria" class="form-select" name="categoria.id" required>
+                                        <option value="">Selecciona una categoría</option>
+                                        <option th:each="c : ${categorias}" th:value="${c.id}" th:text="${c.nombre}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="nuevaImagenUrl">Imagen existente</label>
+                                    <input id="nuevaImagenUrl" class="form-control form-control-custom" type="text"
+                                        name="imagenUrl" list="imagenesProducto" placeholder="/images/pepperoni.jpg">
+                                    <div class="form-text">Elige una imagen existente o escribe su ruta desde la carpeta images.</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="nuevaImagen">Subir imagen</label>
+                                    <input id="nuevaImagen" class="form-control" type="file" name="imagen"
+                                        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                                    <div class="form-text">JPG, PNG o WebP. Máximo 5 MB. Si subes un archivo, reemplaza la ruta anterior.</div>
+                                </div>
+                            </div>
+                            <p class="small text-secondary mt-3 mb-0">Un stock de 0 mantiene el producto inactivo.</p>
+                        </div>
+                        <div class="modal-footer"><button type="button" class="btn btn-light"
+                                data-bs-dismiss="modal">Cancelar</button><button class="btn btn-main">Crear
+                                producto</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <th:block th:each="p : ${productos}">
+            <div class="modal fade admin-modal" th:id="${'editar'+p.id}" tabindex="-1" aria-label="Editar producto">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 class="modal-title fs-5">Editar producto</h2><button class="btn-close"
+                                data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                        </div>
+                        <form th:action="@{/administracion/productos/guardar}" method="post" enctype="multipart/form-data">
+                            <div class="modal-body">
+                                <input type="hidden" name="id" th:value="${p.id}">
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="form-label" th:for="|nombre-${p.id}|">Nombre</label>
+                                        <input class="form-control form-control-custom" name="nombre"
+                                            th:id="|nombre-${p.id}|" th:value="${p.nombre}" required minlength="3" maxlength="100">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label" th:for="|descripcion-${p.id}|">Descripción</label>
+                                        <textarea class="form-control form-control-custom" name="descripcion"
+                                            th:id="|descripcion-${p.id}|" rows="3" th:text="${p.descripcion}"></textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" th:for="|precio-${p.id}|">Precio (S/)</label>
+                                        <input class="form-control form-control-custom" name="precio" type="number"
+                                            th:id="|precio-${p.id}|" min="0.01" step="0.01" th:value="${p.precio}" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" th:for="|stock-${p.id}|">Stock</label>
+                                        <input class="form-control form-control-custom" name="stock" type="number"
+                                            th:id="|stock-${p.id}|" min="0" th:value="${p.stock}" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label" th:for="|categoria-${p.id}|">Categoría</label>
+                                        <select class="form-select" name="categoria.id" th:id="|categoria-${p.id}|" required>
+                                            <option th:each="c : ${categorias}" th:value="${c.id}" th:text="${c.nombre}"
+                                                th:selected="${c.id == p.categoria.id}"></option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label" th:for="|imagenUrl-${p.id}|">Imagen existente</label>
+                                        <input class="form-control form-control-custom" type="text" name="imagenUrl"
+                                            th:id="|imagenUrl-${p.id}|" th:value="${p.imagenUrl}" list="imagenesProducto">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label" th:for="|imagen-${p.id}|">Reemplazar imagen</label>
+                                        <input class="form-control" type="file" name="imagen" th:id="|imagen-${p.id}|"
+                                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                                        <div class="form-text">JPG, PNG o WebP. Máximo 5 MB.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer"><button type="button" class="btn btn-light"
+                                    data-bs-dismiss="modal">Cancelar</button><button class="btn btn-main">Guardar
+                                    cambios</button></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="modal fade admin-modal" th:id="${'retirar'+p.id}" tabindex="-1" aria-label="Confirmar desactivación">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 class="modal-title fs-5">¿Desactivar producto?</h2><button class="btn-close"
+                                data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p><strong th:text="${p.nombre}"></strong> dejará de estar disponible para nuevas compras.
+                            </p>
+                            <p class="text-secondary">Su historial se conservará. Puedes reactivarlo editando su stock.
+                            </p>
+                        </div>
+                        <form class="modal-footer" th:action="@{/administracion/productos/{id}/eliminar(id=${p.id})}"
+                            method="post"><button type="button" class="btn btn-light"
+                                data-bs-dismiss="modal">Cancelar</button><button class="btn btn-danger">Sí,
+                                desactivar</button></form>
+                    </div>
+                </div>
+            </div>
+        </th:block>
+        <datalist id="imagenesProducto">
+            <option value="/images/aji_gallina.jpg"></option>
+            <option value="/images/americana.jpg"></option>
+            <option value="/images/cuatro_quesos.jpg"></option>
+            <option value="/images/doky_house.jpg"></option>
+            <option value="/images/full_meat.jpg"></option>
+            <option value="/images/gaseosas.jpg"></option>
+            <option value="/images/hawaiana.jpg"></option>
+            <option value="/images/huachana.jpg"></option>
+            <option value="/images/lomo_saltado.jpg"></option>
+            <option value="/images/pan_ajo.jpg"></option>
+            <option value="/images/pan_ajo_especial.jpg"></option>
+            <option value="/images/pepperoni.jpg"></option>
+            <option value="/images/tequenos.jpg"></option>
+        </datalist>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/commerce-ui.js}"></script>
+</body>
+
+</html>

@@ -1,0 +1,351 @@
+:root {
+    --doky-ink: #292725;
+    --doky-accent: #b3442c;
+    --bs-primary: #b3442c
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    color: var(--doky-ink);
+    background: #f6f5f2
+}
+
+nav.navbar {
+    background: #302723;
+    min-height: 82px
+}
+
+nav a {
+    color: #fff;
+    text-decoration: none
+}
+
+nav a:hover {
+    color: #f3b49d
+}
+
+nav form {
+    margin: 0
+}
+
+main {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 32px 20px 64px
+}
+
+h1 {
+    font-weight: 750;
+    font-size: clamp(1.7rem, 3vw, 2.3rem);
+    letter-spacing: -.04em
+}
+
+h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 1.5rem 0 1rem
+}
+
+h3 {
+    font-size: 1.1rem
+}
+
+.eyebrow {
+    font-size: .72rem;
+    font-weight: 750;
+    letter-spacing: .16em;
+    color: #a4442e;
+    margin-bottom: .5rem
+}
+
+.admin-container {
+    max-width: 1400px
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid #e8e5e0;
+    border-radius: 14px;
+    padding: 22px;
+    height: 100%
+}
+
+.stat-card span {
+    font-size: .85rem;
+    color: #746d66
+}
+
+.stat-card strong {
+    display: block;
+    font-size: 2rem;
+    margin-top: 6px
+}
+
+.card {
+    border-radius: 14px;
+    overflow: hidden
+}
+
+.card-header h2 {
+    margin: 0
+}
+
+.table th {
+    background: #f8f8f6;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-size: .69rem;
+    color: #746d66;
+    padding: 15px 24px;
+    white-space: nowrap
+}
+
+.table td {
+    padding: 20px 24px;
+    border-color: #efede9
+}
+
+.table td:first-child {
+    min-width: 200px
+}
+
+.table td small {
+    max-width: 350px;
+    margin-top: 5px
+}
+
+.search-input {
+    max-width: 320px
+}
+
+.btn {
+    border-radius: 8px;
+    font-weight: 600;
+    padding: .65rem 1rem
+}
+
+.btn-sm {
+    padding: .4rem .7rem
+}
+
+.btn-primary {
+    --bs-btn-bg: #b3442c;
+    --bs-btn-border-color: #b3442c;
+    --bs-btn-hover-bg: #913320;
+    --bs-btn-hover-border-color: #913320;
+    --bs-btn-active-bg: #7b2a1a
+}
+
+.btn-outline-primary {
+    --bs-btn-color: #a23c26;
+    --bs-btn-border-color: #d7a393;
+    --bs-btn-hover-bg: #a23c26;
+    --bs-btn-hover-border-color: #a23c26
+}
+
+label {
+    display: block;
+    font-size: .88rem;
+    font-weight: 600;
+    margin: .85rem 0;
+    width: 100%
+}
+
+.form-control,
+.form-select {
+    margin-top: .4rem;
+    padding: .7rem .85rem;
+    border-color: #dfd9d2;
+    border-radius: 8px
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #b36b54;
+    box-shadow: 0 0 0 .2rem #b36b5420
+}
+
+input[type=radio],
+input[type=checkbox] {
+    margin-right: .5rem;
+    accent-color: #a23c26
+}
+
+form {
+    margin: 1rem 0
+}
+
+.modal form,
+.modal h2 {
+    margin: 0
+}
+
+.modal-content {
+    border: 0;
+    border-radius: 16px
+}
+
+.modal-header,
+.modal-body,
+.modal-footer {
+    padding: 20px 24px
+}
+
+.modal-footer {
+    background: #faf9f7
+}
+
+.modal-body label:first-child {
+    margin-top: 0
+}
+
+.modal .btn-close {
+    background-color: transparent
+}
+
+fieldset {
+    background: white;
+    border: 1px solid #e8e5e0;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0
+}
+
+legend {
+    float: none;
+    width: auto;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 0 6px
+}
+
+.error {
+    color: #a42121;
+    background: #fff0ee;
+    border-radius: 10px;
+    padding: 16px
+}
+
+.placeholder {
+    display: grid;
+    place-items: center;
+    min-height: 180px;
+    background: #eee8df;
+    color: #857768;
+    border-radius: 14px;
+    opacity: 1
+}
+
+section {
+    margin: 24px 0
+}
+
+main>form {
+    background: white;
+    border: 1px solid #e8e5e0;
+    border-radius: 14px;
+    padding: 24px
+}
+
+main>a {
+    display: inline-block;
+    margin: .5rem .7rem .5rem 0
+}
+
+a {
+    color: #a23c26
+}
+
+p {
+    line-height: 1.65
+}
+
+article p {
+    overflow-wrap: anywhere
+}
+
+*:focus-visible {
+    outline: 3px solid #2483ad;
+    outline-offset: 3px
+}
+
+.management-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
+    gap: 20px
+}
+
+.management-grid article {
+    margin: 0 !important
+}
+
+.section-heading {
+    border-top: 1px solid #dfd9d2;
+    padding-top: 28px;
+    margin-top: 40px
+}
+
+.management-grid form {
+    margin: 0
+}
+
+.management-grid form+form {
+    margin-top: 12px
+}
+
+.admin-page .table-responsive {
+    border-radius: 0
+}
+
+@media(max-width:575px) {
+    main {
+        padding: 24px 16px 48px
+    }
+
+    .navbar {
+        align-items: flex-start !important
+    }
+
+    .navbar>div {
+        font-size: .85rem
+    }
+
+    .stat-card {
+        padding: 16px
+    }
+
+    .table td,
+    .table th {
+        padding: 14px 16px
+    }
+
+    .modal-dialog {
+        margin: 12px
+    }
+
+    .modal-body,
+    .modal-header,
+    .modal-footer {
+        padding: 18px
+    }
+
+    .search-input {
+        max-width: none
+    }
+
+    .card-header {
+        padding: 18px !important
+    }
+
+    .btn {
+        min-height: 42px
+    }
+
+    main>form {
+        padding: 20px
+    }
+
+    h2 {
+        font-size: 1.15rem
+    }
+}

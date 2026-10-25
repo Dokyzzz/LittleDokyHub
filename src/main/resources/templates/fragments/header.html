@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+</head>
+
+<body>
+    <header class="sticky-top" th:fragment="header(paginaActiva)">
+        <nav class="navbar navbar-expand-lg navbar-dark container py-2">
+            <a class="navbar-brand fw-bold" id="navbarLogoLink" th:href="@{/}">
+                <img th:src="@{/images/logo.png}" class="img-fluid site-logo" alt="Logo Header">
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navDoky">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navDoky">
+                <ul class="navbar-nav me-auto" id="mainNavLinks">
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${paginaActiva == 'inicio'} ? 'active' : ''"
+                            th:href="@{/}">Inicio</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle"
+                            th:classappend="${paginaActiva == 'categorias'} ? 'active' : ''" href="#"
+                            data-bs-toggle="dropdown">Categorías</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" th:href="@{/categorias#clasicas}">Clásicas</a></li>
+                            <li><a class="dropdown-item" th:href="@{/categorias#especiales}">Especiales</a></li>
+                            <li><a class="dropdown-item" th:href="@{/categorias#bebidas}">Bebidas</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${paginaActiva == 'detalles'} ? 'active' : ''"
+                            th:href="@{/detalles}">Nosotros</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${paginaActiva == 'contacto'} ? 'active' : ''"
+                            th:href="@{/contacto}">Contacto</a>
+                    </li>
+                </ul>
+
+                <div class="me-auto" id="adminSpacer"></div>
+
+                <div class="d-flex align-items-center gap-3">
+                    <button class="btn btn-accent btn-sm position-relative" id="btnNavCarrito" type="button"
+                        data-bs-toggle="modal" data-bs-target="#modalCarrito">
+                        <i class="bi bi-cart3"></i> Carrito
+                    </button>
+
+                    <div class="d-flex align-items-center gap-3" id="userNavSection">
+                        <a th:if="${!sesionAutenticada}" th:href="@{/login}" class="btn btn-main btn-sm"
+                            id="btnIniciarSesion">Iniciar Sesión</a>
+
+                        <div th:if="${sesionAutenticada}" id="usuarioInfo" class="d-flex align-items-center gap-3">
+                            <a th:if="${sesionAdmin}" th:href="@{/administracion}" id="btnNavAdmin"
+                                class="btn btn-outline-warning btn-sm rounded-pill px-3 py-1 fw-bold text-uppercase admin-nav-link">
+                                Administrador
+                            </a>
+
+                            <span class="text-white small fw-bold d-flex align-items-center gap-1">
+                                <i class="bi bi-person-fill text-warning fs-5" id="userIcon"></i>
+                                <span id="navUsuarioNombre" th:text="${sesionNombre}"></span>
+                            </span>
+
+                            <form th:action="@{/logout}" method="post" class="mb-0">
+                                <button class="btn btn-sm text-danger border-0 p-0 fw-semibold text-decoration-none"
+                                    type="submit" title="Cerrar sesión">
+                                    <i class="bi bi-box-arrow-right"></i> Salir
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+</body>
+
+</html>

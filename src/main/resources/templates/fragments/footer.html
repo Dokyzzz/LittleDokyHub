@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+</head>
+<body>
+    <footer class="pt-5 pb-4" th:fragment="footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-12 col-md-4">
+                    <img th:src="@{/images/logo.png}" class="img-fluid site-logo" alt="Logo Footer">
+                    <p class="small text-secondary">Pizzería artesanal comprometida con el buen sabor y entregas
+                        rápidas.</p>
+                    <div class="d-flex gap-3 fs-5">
+                        <a target="_blank" href="https://facebook.com"><i class="bi bi-facebook"></i></a>
+                        <a target="_blank" href="https://instagram.com"><i class="bi bi-instagram"></i></a>
+                        <a target="_blank" href="https://whatsapp.com"><i class="bi bi-whatsapp"></i></a>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-4">
+                    <h6>Menú</h6>
+                    <ul class="list-unstyled small d-flex flex-column gap-1">
+                        <li><a th:href="@{/categorias#clasicas}">Tradicionales</a></li>
+                        <li><a th:href="@{/categorias#especiales}">Especiales</a></li>
+                        <li><a th:href="@{/categorias#bebidas}">Bebidas</a></li>
+                    </ul>
+                </div>
+
+                <div class="col-6 col-md-4">
+                    <h6>Atención</h6>
+                    <ul class="list-unstyled small d-flex flex-column gap-1">
+                        <li><a th:href="@{/detalles}">Detalles</a></li>
+                        <li><a th:href="@{/contacto}">Contacto</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <hr class="my-4">
+            <p class="text-center small mb-0 text-secondary">
+                &copy; 2026 Little Doky's Hub. Todos los derechos reservados.
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
